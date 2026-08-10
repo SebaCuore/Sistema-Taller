@@ -16,6 +16,7 @@ Validar con el taller, lo antes posible, que una app simple de carga de ventas m
 
 - Stock de Servicios (sin precio fijo) y Productos (con precio y stock fijos).
 - Pantalla de venta: elegir ítems, cobrar (monto a mano en servicios, precio de catálogo en productos), descontar stock.
+- Historial de ventas: lista filtrable por día, con opción de borrar una venta cargada por error (repone el stock si correspondía).
 - Sin login: acceso interno, un único usuario/dispositivo compartido en el mostrador.
 
 Ver el detalle funcional en [`02-funcionalidad.md`](./02-funcionalidad.md).

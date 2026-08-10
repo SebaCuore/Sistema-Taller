@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/", label: "Ventas" },
+  { href: "/historial", label: "Historial" },
   { href: "/stock", label: "Stock" },
 ];
 
@@ -39,7 +40,7 @@ export function DesktopNav() {
 export function MobileNav() {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-2 border-t-4 border-yellow-400 bg-black md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t-4 border-yellow-400 bg-black md:hidden">
       {LINKS.map((link) => {
         const active = isActive(pathname, link.href);
         return (

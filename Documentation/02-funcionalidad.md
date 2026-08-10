@@ -1,6 +1,6 @@
 # Funcionalidad del MVP
 
-Dos áreas: **Stock** y **Ventas**. Ambas mobile-first, con botones grandes pensados para usarse con el pulgar mientras se atiende un cliente parado en el mostrador.
+Tres áreas: **Ventas**, **Historial** y **Stock**. Todas mobile-first, con botones grandes pensados para usarse con el pulgar mientras se atiende un cliente parado en el mostrador.
 
 ## 1. Stock (Servicios y Productos)
 
@@ -23,6 +23,14 @@ Pantalla principal de la app, pensada para cobrar en menos de 10 segundos.
 5. **Carrito:** lista de ítems agregados, editable/eliminable.
 6. **Cobro:** elegir método de pago (Efectivo, Transferencia o Tarjeta) y confirmar.
 7. **Al confirmar:** se registra la venta con fecha/hora. Si había productos, se descuenta su stock (puede quedar en negativo, como aviso de que hay que recontar). Se limpia el carrito.
+
+## 3. Historial
+
+Lista de ventas para revisar y corregir errores de carga.
+
+- **Filtro por día:** selector de fecha (por defecto, hoy). Muestra las ventas de ese día con hora, ítems, método de pago y total.
+- **Total del día:** suma de todas las ventas listadas.
+- **Borrar una venta:** botón con confirmación en dos pasos. Al borrar, si la venta incluía Productos, se le repone el stock descontado — para que el error de carga no deje el stock desfasado.
 
 ## Notas de diseño
 
