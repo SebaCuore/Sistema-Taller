@@ -17,7 +17,7 @@ export default function CatalogoError({
       </p>
       <button
         onClick={reset}
-        className="rounded-lg border-2 border-black bg-yellow-400 px-5 py-3 text-sm font-bold tracking-wide uppercase text-black hover:bg-black hover:text-yellow-400"
+        className="rounded-lg border-2 border-black bg-yellow-400 px-5 py-3 text-sm font-bold tracking-wide uppercase text-black active:scale-[0.97] hover:bg-black hover:text-yellow-400"
       >
         Reintentar
       </button>

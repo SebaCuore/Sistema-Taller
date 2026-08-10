@@ -26,18 +26,7 @@ async function main() {
     )
   );
 
-  const medidas = ["R13", "R14", "R15", "R16", "2.75-18", "3.00-18"];
-  await Promise.all(
-    medidas.map((codigo) =>
-      prisma.medida.upsert({
-        where: { codigo },
-        update: {},
-        create: { codigo },
-      })
-    )
-  );
-
-  console.log("Seed completo: categorías, métodos de pago y medidas base.");
+  console.log("Seed completo: categorías y métodos de pago base.");
 }
 
 main()

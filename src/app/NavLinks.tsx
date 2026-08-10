@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/", label: "Ventas" },
-  { href: "/catalogo", label: "Catálogo" },
+  { href: "/stock", label: "Stock" },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -22,7 +22,7 @@ export function DesktopNav() {
           <Link
             key={link.href}
             href={link.href}
-            className={`rounded-lg border-2 px-6 py-2.5 text-sm font-bold tracking-wide uppercase transition-colors ${
+            className={`rounded-lg border-2 px-6 py-2.5 text-sm font-bold tracking-wide uppercase transition active:scale-[0.97] ${
               active
                 ? "border-yellow-400 bg-yellow-400 text-black"
                 : "border-white/30 bg-transparent text-white hover:border-yellow-400 hover:text-yellow-400"
@@ -46,7 +46,7 @@ export function MobileNav() {
           <Link
             key={link.href}
             href={link.href}
-            className={`flex items-center justify-center py-3.5 text-sm font-bold tracking-wide uppercase ${
+            className={`flex items-center justify-center py-3.5 text-sm font-bold tracking-wide uppercase active:scale-[0.97] ${
               active ? "bg-yellow-400 text-black" : "text-white"
             }`}
           >

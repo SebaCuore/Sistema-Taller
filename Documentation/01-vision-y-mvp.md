@@ -6,7 +6,7 @@ Sistema web de gestión para un taller mecánico ligero / gomería. Uso interno,
 
 ## Problema que resuelve
 
-Hoy el registro de ventas (servicios y productos) es manual. Esto dificulta saber cuánto se facturó, qué se vendió y cuánto stock queda, sobre todo cuando el precio de un servicio o producto cambia según la medida/rodado del vehículo (ej. una reparación de R13 no cuesta lo mismo que una de R16).
+Hoy el registro de ventas (servicios y productos) es manual. Esto dificulta saber cuánto se facturó, qué se vendió y cuánto stock queda — sobre todo con los servicios, donde el precio de mano de obra se define caso a caso y no sigue una tarifa fija.
 
 ## Objetivo del MVP
 
@@ -14,8 +14,8 @@ Validar con el taller, lo antes posible, que una app simple de carga de ventas m
 
 ## Qué entra en el MVP
 
-- Catálogo de Servicios y Productos, con precio único o precio por rodado/medida.
-- Pantalla de venta: elegir ítems, cobrar, descontar stock.
+- Stock de Servicios (sin precio fijo) y Productos (con precio y stock fijos).
+- Pantalla de venta: elegir ítems, cobrar (monto a mano en servicios, precio de catálogo en productos), descontar stock.
 - Sin login: acceso interno, un único usuario/dispositivo compartido en el mostrador.
 
 Ver el detalle funcional en [`02-funcionalidad.md`](./02-funcionalidad.md).

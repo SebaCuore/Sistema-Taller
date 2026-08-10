@@ -13,13 +13,9 @@ export default async function EditarItemPage({
   const { id } = await params;
   const id_item = Number(id);
 
-  const [item, categorias, medidas] = await Promise.all([
-    prisma.item.findUnique({
-      where: { id_item },
-      include: { item_medidas: true },
-    }),
+  const [item, categorias] = await Promise.all([
+    prisma.item.findUnique({ where: { id_item } }),
     prisma.categoria.findMany({ orderBy: { nombre: "asc" } }),
-    prisma.medida.findMany({ where: { activo: true }, orderBy: { codigo: "asc" } }),
   ]);
 
   if (!item) notFound();
@@ -32,21 +28,12 @@ export default async function EditarItemPage({
       <ItemForm
         action={updateItem.bind(null, item.id_item)}
         categorias={categorias}
-        medidas={medidas}
         item={{
           nombre: item.nombre,
           descripcion: item.descripcion,
           id_categoria: item.id_categoria,
-          tiene_medida: item.tiene_medida,
           precio_base: item.precio_base ? item.precio_base.toNumber() : null,
           stock_actual: item.stock_actual,
-          item_medidas: item.item_medidas
-            .filter((m) => m.activo)
-            .map((m) => ({
-              id_medida: m.id_medida,
-              precio: m.precio.toNumber(),
-              stock: m.stock,
-            })),
         }}
       />
     </div>

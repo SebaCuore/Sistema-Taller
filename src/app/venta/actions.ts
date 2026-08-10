@@ -5,8 +5,9 @@ import { revalidatePath } from "next/cache";
 
 export type LineaVenta = {
   id_item: number;
-  id_item_medida: number | null;
   cantidad: number;
+  /** Solo para servicios: precio unitario cargado a mano al momento de la venta. */
+  monto?: number;
 };
 
 export async function confirmarVenta(lineas: LineaVenta[], id_metodo_pago: number) {
@@ -21,7 +22,6 @@ export async function confirmarVenta(lineas: LineaVenta[], id_metodo_pago: numbe
     let monto_total = 0;
     const detalles: {
       id_item: number;
-      id_item_medida: number | null;
       cantidad: number;
       precio_unitario: number;
       subtotal: number;
@@ -30,56 +30,40 @@ export async function confirmarVenta(lineas: LineaVenta[], id_metodo_pago: numbe
     for (const linea of lineas) {
       if (linea.cantidad <= 0) continue;
 
-      if (linea.id_item_medida) {
-        const itemMedida = await tx.itemMedida.findUnique({
-          where: { id_item_medida: linea.id_item_medida },
-          include: { item: true },
-        });
-        if (!itemMedida || !itemMedida.activo || itemMedida.id_item !== linea.id_item) {
-          throw new Error("Uno de los ítems ya no está disponible.");
+      const item = await tx.item.findUnique({
+        where: { id_item: linea.id_item },
+        include: { categoria: true },
+      });
+      if (!item || !item.activo) {
+        throw new Error("Uno de los ítems ya no está disponible.");
+      }
+
+      let precio_unitario: number;
+
+      if (item.categoria.nombre === "Servicio") {
+        if (!linea.monto || linea.monto <= 0) {
+          throw new Error(`Ingresá un monto válido para ${item.nombre}.`);
         }
-        const actualizado = await tx.itemMedida.updateMany({
-          where: { id_item_medida: linea.id_item_medida, stock: { gte: linea.cantidad } },
-          data: { stock: { decrement: linea.cantidad } },
-        });
-        if (actualizado.count === 0) {
-          throw new Error(`Sin stock suficiente de ${itemMedida.item.nombre}.`);
-        }
-        const precio_unitario = itemMedida.precio.toNumber();
-        const subtotal = precio_unitario * linea.cantidad;
-        monto_total += subtotal;
-        detalles.push({
-          id_item: linea.id_item,
-          id_item_medida: linea.id_item_medida,
-          cantidad: linea.cantidad,
-          precio_unitario,
-          subtotal,
-        });
+        precio_unitario = linea.monto;
       } else {
-        const item = await tx.item.findUnique({ where: { id_item: linea.id_item } });
-        if (!item || !item.activo) {
-          throw new Error("Uno de los ítems ya no está disponible.");
-        }
-        if (item.stock_actual !== null) {
-          const actualizado = await tx.item.updateMany({
-            where: { id_item: linea.id_item, stock_actual: { gte: linea.cantidad } },
-            data: { stock_actual: { decrement: linea.cantidad } },
-          });
-          if (actualizado.count === 0) {
-            throw new Error(`Sin stock suficiente de ${item.nombre}.`);
-          }
-        }
-        const precio_unitario = item.precio_base?.toNumber() ?? 0;
-        const subtotal = precio_unitario * linea.cantidad;
-        monto_total += subtotal;
-        detalles.push({
-          id_item: linea.id_item,
-          id_item_medida: null,
-          cantidad: linea.cantidad,
-          precio_unitario,
-          subtotal,
+        precio_unitario = item.precio_base?.toNumber() ?? 0;
+        // Los productos se pueden vender aunque el stock cargado en el sistema
+        // sea 0 o insuficiente: puede haber stock físico sin actualizar todavía.
+        // El stock puede quedar en negativo como señal de que hay que corregirlo.
+        await tx.item.update({
+          where: { id_item: linea.id_item },
+          data: { stock_actual: (item.stock_actual ?? 0) - linea.cantidad },
         });
       }
+
+      const subtotal = precio_unitario * linea.cantidad;
+      monto_total += subtotal;
+      detalles.push({
+        id_item: linea.id_item,
+        cantidad: linea.cantidad,
+        precio_unitario,
+        subtotal,
+      });
     }
 
     if (detalles.length === 0) {
@@ -96,7 +80,7 @@ export async function confirmarVenta(lineas: LineaVenta[], id_metodo_pago: numbe
   });
 
   revalidatePath("/");
-  revalidatePath("/catalogo");
+  revalidatePath("/stock");
 
   return { id_venta: venta.id_venta, monto_total: venta.monto_total.toNumber() };
 }

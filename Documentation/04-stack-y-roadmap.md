@@ -18,7 +18,7 @@ Auth:       ninguna por ahora (acceso interno, sin pantalla de login)
 **Fase 1 — MVP (este documento + [`02-funcionalidad.md`](./02-funcionalidad.md))**
 1. Setup del proyecto Next.js, repo en GitHub, deploy en Vercel, base vacía en Neon.
 2. Modelo de datos con Prisma (ver [`03-modelo-de-datos.md`](./03-modelo-de-datos.md)).
-3. Pantalla de Catálogo: alta/edición de ítems, precio único o por medida, baja lógica.
+3. Pantalla de Stock: alta/edición de servicios y productos, baja lógica.
 4. Pantalla de Venta: carrito, cobro, descuento de stock en tiempo real.
 5. Probar con el taller en uso real.
 

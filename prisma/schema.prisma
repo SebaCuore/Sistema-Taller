@@ -1,4 +1,4 @@
-// Prisma schema para el MVP de Sistema-Taller (Ventas + Catálogo)
+// Prisma schema para Sistema-Taller (Ventas + Stock)
 // Ver Documentation/03-modelo-de-datos.md para el detalle conceptual.
 
 generator client {
@@ -11,8 +11,8 @@ datasource db {
 }
 
 model Categoria {
-  id_categoria Int    @id @default(autoincrement())
-  nombre       String @unique
+  id_categoria Int     @id @default(autoincrement())
+  nombre       String  @unique
   descripcion  String?
 
   items Item[]
@@ -20,49 +20,20 @@ model Categoria {
   @@map("categorias")
 }
 
-model Medida {
-  id_medida   Int     @id @default(autoincrement())
-  codigo      String  @unique
-  descripcion String?
-  activo      Boolean @default(true)
-
-  item_medidas ItemMedida[]
-
-  @@map("medidas")
-}
-
 model Item {
-  id_item      Int     @id @default(autoincrement())
+  id_item      Int      @id @default(autoincrement())
   id_categoria Int
   nombre       String
   descripcion  String?
   imagen_url   String?
-  tiene_medida Boolean @default(false)
   precio_base  Decimal? @db.Decimal(10, 2)
   stock_actual Int?
-  activo       Boolean @default(true)
+  activo       Boolean  @default(true)
 
-  categoria     Categoria       @relation(fields: [id_categoria], references: [id_categoria])
-  item_medidas  ItemMedida[]
+  categoria     Categoria      @relation(fields: [id_categoria], references: [id_categoria])
   detalle_venta DetalleVenta[]
 
   @@map("items")
-}
-
-model ItemMedida {
-  id_item_medida Int     @id @default(autoincrement())
-  id_item        Int
-  id_medida      Int
-  precio         Decimal @db.Decimal(10, 2)
-  stock          Int     @default(0)
-  activo         Boolean @default(true)
-
-  item          Item           @relation(fields: [id_item], references: [id_item])
-  medida        Medida         @relation(fields: [id_medida], references: [id_medida])
-  detalle_venta DetalleVenta[]
-
-  @@unique([id_item, id_medida])
-  @@map("item_medidas")
 }
 
 model MetodoPago {
@@ -82,7 +53,7 @@ model Venta {
   fecha_hora     DateTime @default(now())
   observaciones  String?
 
-  metodo_pago MetodoPago @relation(fields: [id_metodo_pago], references: [id_metodo_pago])
+  metodo_pago MetodoPago     @relation(fields: [id_metodo_pago], references: [id_metodo_pago])
   detalles    DetalleVenta[]
 
   @@map("ventas")
@@ -92,14 +63,12 @@ model DetalleVenta {
   id_detalle      Int     @id @default(autoincrement())
   id_venta        Int
   id_item         Int
-  id_item_medida  Int?
   cantidad        Int
   precio_unitario Decimal @db.Decimal(10, 2)
   subtotal        Decimal @db.Decimal(10, 2)
 
-  venta       Venta       @relation(fields: [id_venta], references: [id_venta])
-  item        Item        @relation(fields: [id_item], references: [id_item])
-  item_medida ItemMedida? @relation(fields: [id_item_medida], references: [id_item_medida])
+  venta Venta @relation(fields: [id_venta], references: [id_venta])
+  item  Item  @relation(fields: [id_item], references: [id_item])
 
   @@map("detalles_venta")
 }

@@ -7,26 +7,13 @@
 - `nombre`
 - `descripcion` (opcional)
 
-**`medidas`** — Catálogo de rodados/medidas del taller (R13, R14, R15, 2.75-18, ...).
-- `id_medida` (PK)
-- `codigo`
-- `descripcion` (opcional)
-- `activo`
-
 **`items`** — Ficha de cada servicio/producto.
 - `id_item` (PK)
 - `id_categoria` (FK → `categorias`)
 - `nombre`, `descripcion`, `imagen_url`
-- `tiene_medida` (bool: si usa precio por rodado)
-- `precio_base` (usado si `tiene_medida = false`)
-- `stock_actual` (usado si es Producto y `tiene_medida = false`)
+- `precio_base` — obligatorio si es Producto; `null` si es Servicio (el precio se carga a mano al vender).
+- `stock_actual` — obligatorio si es Producto; `null` si es Servicio.
 - `activo` (baja lógica)
-
-**`item_medidas`** — Precio y stock específicos cuando un ítem varía por medida.
-- `id_item_medida` (PK)
-- `id_item` (FK → `items`)
-- `id_medida` (FK → `medidas`)
-- `precio`, `stock`, `activo`
 
 **`metodos_pago`** — Efectivo, Transferencia, Tarjeta.
 - `id_metodo_pago` (PK)
@@ -41,21 +28,21 @@
 - `id_detalle` (PK)
 - `id_venta` (FK → `ventas`)
 - `id_item` (FK → `items`)
-- `id_item_medida` (FK → `item_medidas`, opcional)
 - `cantidad`, `precio_unitario` (congelado al momento del cobro), `subtotal`
 
 ## Relaciones
 
 - `categorias` 1—N `items`.
-- `items` N—N `medidas`, a través de `item_medidas` (que además guarda precio y stock específicos de esa combinación).
 - `metodos_pago` 1—N `ventas`.
 - `ventas` 1—N `detalles_venta`.
-- `items` / `item_medidas` 1—N `detalles_venta`.
+- `items` 1—N `detalles_venta`.
 
 ## Reglas clave
 
-1. **Precios congelados:** `detalles_venta.precio_unitario` se guarda en el momento del cobro. Si después cambia el precio en `items` o `item_medidas`, las ventas pasadas no se ven afectadas.
-2. **Descuento de stock:** al confirmar una venta, si el ítem tiene medida se descuenta de `item_medidas.stock`; si no, se descuenta de `items.stock_actual`.
-3. **Baja lógica:** desactivar un ítem (o una medida) solo cambia `activo = false`. Nunca se borra un registro que ya tenga ventas asociadas, para no romper el historial.
+1. **Precios congelados:** `detalles_venta.precio_unitario` se guarda en el momento del cobro.
+   - En **Productos**, viene de `items.precio_base` en ese instante — si después cambia el precio del ítem, las ventas pasadas no se ven afectadas.
+   - En **Servicios**, no viene de ninguna tabla: lo escribe el operario al momento de la venta. El servidor confía en ese monto porque el precio de la mano de obra no está en ningún catálogo — es la única excepción a "todo precio sale de una tabla".
+2. **Descuento de stock:** al confirmar una venta con un Producto, se descuenta `items.stock_actual` por la cantidad vendida. **No se bloquea la venta si el stock no alcanza** — puede quedar en 0 o negativo, como señal de que el stock cargado en el sistema está desactualizado respecto al físico. Los Servicios no tienen stock.
+3. **Baja lógica:** desactivar un ítem solo cambia `activo = false`. Nunca se borra un registro que ya tenga ventas asociadas, para no romper el historial.
 
-> Nota: este esquema es el mismo que en la especificación original, sin cambios — la lógica de datos ya estaba bien pensada para el MVP. Lo único que se recorta acá es todo lo que no hace falta para vender: no incluye tablas de turnos, usuarios/roles ni cierres mensuales (eso queda para cuando se construya Fase 2, ver [`04-stack-y-roadmap.md`](./04-stack-y-roadmap.md)).
+> Este modelo reemplaza al esquema original, que incluía una tabla `medidas` e `item_medidas` para manejar precios por rodado. Se simplificó porque en la práctica el precio de un servicio se negocia caso a caso (no tiene sentido mantener una tarifa fija por medida) y los productos, para este MVP, alcanzan con un precio y un stock únicos.

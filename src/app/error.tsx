@@ -15,7 +15,7 @@ export default function RootError({
       <p className="text-sm font-medium text-black/70">{error.message || "Intentá de nuevo."}</p>
       <button
         onClick={reset}
-        className="rounded-lg border-2 border-black bg-yellow-400 px-5 py-3 text-sm font-bold tracking-wide uppercase text-black hover:bg-black hover:text-yellow-400"
+        className="rounded-lg border-2 border-black bg-yellow-400 px-5 py-3 text-sm font-bold tracking-wide uppercase text-black active:scale-[0.97] hover:bg-black hover:text-yellow-400"
       >
         Reintentar
       </button>
