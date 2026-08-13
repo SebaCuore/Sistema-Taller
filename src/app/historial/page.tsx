@@ -32,11 +32,26 @@ export default async function HistorialPage({
 
   const ventas = await prisma.venta.findMany({
     where: { fecha_hora: { gte: inicio, lte: fin } },
-    include: { metodo_pago: true, detalles: { include: { item: true } } },
+    include: {
+      metodo_pago: true,
+      detalles: { include: { item: { include: { categoria: true } } } },
+    },
     orderBy: { fecha_hora: "desc" },
   });
 
   const totalDia = ventas.reduce((acc, v) => acc + v.monto_total.toNumber(), 0);
+
+  const resumenServicios = new Map<string, number>();
+  for (const venta of ventas) {
+    for (const d of venta.detalles) {
+      if (d.item.categoria.nombre === "Servicio") {
+        resumenServicios.set(d.item.nombre, (resumenServicios.get(d.item.nombre) ?? 0) + d.cantidad);
+      }
+    }
+  }
+  const resumenServiciosOrdenado = Array.from(resumenServicios.entries()).sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 pb-8 md:gap-6 md:p-6">
@@ -48,6 +63,22 @@ export default async function HistorialPage({
       </div>
 
       <DateFilterForm fecha={fecha} />
+
+      {resumenServiciosOrdenado.length > 0 && (
+        <div className="rounded-lg border-2 border-black bg-white p-3 md:p-4">
+          <p className="mb-2 text-sm font-bold tracking-wide uppercase">Servicios del día</p>
+          <div className="flex flex-wrap gap-2">
+            {resumenServiciosOrdenado.map(([nombre, cantidad]) => (
+              <span
+                key={nombre}
+                className="rounded-lg border-2 border-black bg-yellow-400 px-3 py-1.5 text-sm font-bold text-black"
+              >
+                {nombre}: {cantidad}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3">
         {ventas.map((venta) => (

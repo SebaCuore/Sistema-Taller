@@ -2,7 +2,9 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { confirmarVenta } from "./venta/actions";
+import { confirmarVenta, crearServicio, borrarServicio } from "./venta/actions";
+
+type TipoVehiculo = "MOTO" | "AUTO";
 
 type ItemVenta = {
   id_item: number;
@@ -10,8 +12,15 @@ type ItemVenta = {
   categoria: string;
   precio_base: number | null;
   stock_actual: number | null;
+  tipo_vehiculo: TipoVehiculo | null;
 };
 type MetodoPago = { id: number; nombre: string };
+
+const FILTROS_TIPO: { key: "TODOS" | TipoVehiculo; label: string }[] = [
+  { key: "TODOS", label: "Todos" },
+  { key: "MOTO", label: "Moto" },
+  { key: "AUTO", label: "Auto" },
+];
 
 type CartLine = {
   key: string;
@@ -29,6 +38,50 @@ const TAB_LABEL: Record<string, string> = {
   Producto: "Productos",
 };
 
+function BorrarServicioButton({ id_item }: { id_item: number }) {
+  const router = useRouter();
+  const [confirmando, setConfirmando] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  if (confirmando) {
+    return (
+      <div className="flex gap-1">
+        <button
+          type="button"
+          onClick={() => setConfirmando(false)}
+          disabled={pending}
+          className="rounded-lg border-2 border-black bg-white px-2.5 py-2.5 text-xs font-bold tracking-wide uppercase transition active:scale-[0.97] hover:bg-black hover:text-white md:py-3"
+        >
+          No
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              await borrarServicio(id_item);
+              router.refresh();
+            })
+          }
+          className="rounded-lg border-2 border-black bg-black px-2.5 py-2.5 text-xs font-bold tracking-wide uppercase text-white transition active:scale-[0.97] disabled:opacity-50 md:py-3"
+        >
+          {pending ? "..." : "Sí"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setConfirmando(true)}
+      className="rounded-lg border-2 border-black bg-white px-3 py-2.5 text-xs font-bold tracking-wide uppercase transition active:scale-[0.97] hover:bg-black hover:text-white md:py-3"
+    >
+      Borrar
+    </button>
+  );
+}
+
 export function VentaClient({
   categorias,
   items,
@@ -41,12 +94,17 @@ export function VentaClient({
   const router = useRouter();
   const [tab, setTab] = useState(categorias[0] ?? "");
   const [busqueda, setBusqueda] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState<"TODOS" | TipoVehiculo>("TODOS");
   const [cart, setCart] = useState<CartLine[]>([]);
   const keyCounter = useRef(0);
 
   const [modalItem, setModalItem] = useState<ItemVenta | null>(null);
   const [modalMonto, setModalMonto] = useState("");
   const [modalCantidad, setModalCantidad] = useState(1);
+
+  const [nuevoServicioOpen, setNuevoServicioOpen] = useState(false);
+  const [nuevoServicioNombre, setNuevoServicioNombre] = useState("");
+  const [pendingServicio, startTransitionServicio] = useTransition();
 
   const [cartOpen, setCartOpen] = useState(false);
   const [metodoPagoId, setMetodoPagoId] = useState<number | null>(metodosPago[0]?.id ?? null);
@@ -59,10 +117,36 @@ export function VentaClient({
       items.filter(
         (item) =>
           item.categoria === tab &&
-          item.nombre.toLowerCase().includes(busqueda.trim().toLowerCase())
+          item.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()) &&
+          (tab !== "Producto" || filtroTipo === "TODOS" || item.tipo_vehiculo === filtroTipo)
       ),
-    [items, tab, busqueda]
+    [items, tab, busqueda, filtroTipo]
   );
+
+  function abrirNuevoServicio() {
+    setNuevoServicioNombre("");
+    setNuevoServicioOpen(true);
+  }
+
+  function confirmarNuevoServicio() {
+    const nombre = nuevoServicioNombre.trim();
+    if (!nombre) {
+      setErrorMsg("Ingresá un nombre para el servicio.");
+      return;
+    }
+    setErrorMsg(null);
+    startTransitionServicio(async () => {
+      try {
+        await crearServicio(nombre);
+        setNuevoServicioOpen(false);
+        setSuccessMsg(`Servicio "${nombre}" creado.`);
+        router.refresh();
+        setTimeout(() => setSuccessMsg(null), 4000);
+      } catch (e) {
+        setErrorMsg(e instanceof Error ? e.message : "No se pudo crear el servicio.");
+      }
+    });
+  }
 
   function agregarProducto(item: ItemVenta) {
     const key = `producto-${item.id_item}`;
@@ -183,6 +267,33 @@ export function VentaClient({
         />
       </div>
 
+      {tab === "Producto" && (
+        <div className="flex gap-2">
+          {FILTROS_TIPO.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFiltroTipo(f.key)}
+              className={`rounded-lg border-2 border-black px-4 py-2 text-xs font-bold tracking-wide uppercase transition active:scale-[0.97] md:text-sm ${
+                filtroTipo === f.key
+                  ? "bg-black text-white"
+                  : "bg-white text-black hover:bg-yellow-400"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === "Servicio" && (
+        <button
+          onClick={abrirNuevoServicio}
+          className="self-start rounded-lg border-2 border-black bg-yellow-400 px-5 py-3 text-sm font-bold tracking-wide uppercase text-black transition active:scale-[0.97] hover:bg-black hover:text-yellow-400"
+        >
+          Nuevo Servicio
+        </button>
+      )}
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4">
         {itemsFiltrados.map((item) => {
           const esServicio = item.categoria === "Servicio";
@@ -215,16 +326,28 @@ export function VentaClient({
                   {sinStock ? " (sin stock)" : ""}
                 </span>
               )}
-              <button
-                onClick={() => (esServicio ? abrirModalServicio(item) : agregarProducto(item))}
-                className={`rounded-lg border-2 py-2.5 text-sm font-bold tracking-wide uppercase transition active:scale-[0.97] md:py-3 ${
-                  sinStock
-                    ? "border-black/40 bg-zinc-300 text-black/60 hover:bg-black hover:text-white"
-                    : "border-black bg-yellow-400 text-black hover:bg-black hover:text-yellow-400"
-                }`}
-              >
-                Agregar
-              </button>
+              {esServicio ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => abrirModalServicio(item)}
+                    className="flex-1 rounded-lg border-2 border-black bg-yellow-400 py-2.5 text-sm font-bold tracking-wide uppercase text-black transition active:scale-[0.97] hover:bg-black hover:text-yellow-400 md:py-3"
+                  >
+                    Agregar
+                  </button>
+                  <BorrarServicioButton id_item={item.id_item} />
+                </div>
+              ) : (
+                <button
+                  onClick={() => agregarProducto(item)}
+                  className={`rounded-lg border-2 py-2.5 text-sm font-bold tracking-wide uppercase transition active:scale-[0.97] md:py-3 ${
+                    sinStock
+                      ? "border-black/40 bg-zinc-300 text-black/60 hover:bg-black hover:text-white"
+                      : "border-black bg-yellow-400 text-black hover:bg-black hover:text-yellow-400"
+                  }`}
+                >
+                  Agregar
+                </button>
+              )}
             </div>
           );
         })}
@@ -289,6 +412,45 @@ export function VentaClient({
                 className="flex-1 rounded-lg border-2 border-black bg-yellow-400 py-3 text-sm font-bold tracking-wide uppercase text-black active:scale-[0.97] hover:bg-black hover:text-yellow-400"
               >
                 Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {nuevoServicioOpen && (
+        <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60 md:items-center">
+          <div className="w-full max-w-md rounded-t-2xl border-4 border-black bg-white p-5 md:rounded-2xl">
+            <p className="mb-3 text-lg font-bold uppercase tracking-wide">Nuevo servicio</p>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-bold tracking-wide uppercase" htmlFor="nuevo-servicio-nombre">
+                Nombre
+              </label>
+              <input
+                id="nuevo-servicio-nombre"
+                type="text"
+                autoFocus
+                value={nuevoServicioNombre}
+                onChange={(e) => setNuevoServicioNombre(e.target.value)}
+                placeholder="Ej: Alineación"
+                className="rounded-lg border-2 border-black px-3 py-3 text-lg font-bold focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+              />
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => setNuevoServicioOpen(false)}
+                className="flex-1 rounded-lg border-2 border-black bg-white py-3 text-sm font-bold tracking-wide uppercase active:scale-[0.97] hover:bg-black hover:text-white"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarNuevoServicio}
+                disabled={pendingServicio}
+                className="flex-1 rounded-lg border-2 border-black bg-yellow-400 py-3 text-sm font-bold tracking-wide uppercase text-black transition active:scale-[0.97] hover:bg-black hover:text-yellow-400 disabled:border-zinc-300 disabled:bg-zinc-200 disabled:text-zinc-500"
+              >
+                {pendingServicio ? "Creando..." : "Crear"}
               </button>
             </div>
           </div>

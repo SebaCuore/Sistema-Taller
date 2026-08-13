@@ -84,3 +84,36 @@ export async function confirmarVenta(lineas: LineaVenta[], id_metodo_pago: numbe
 
   return { id_venta: venta.id_venta, monto_total: venta.monto_total.toNumber() };
 }
+
+export async function crearServicio(nombre: string) {
+  const nombreLimpio = nombre.trim();
+  if (!nombreLimpio) {
+    throw new Error("El nombre del servicio es obligatorio.");
+  }
+
+  const categoria = await prisma.categoria.findUniqueOrThrow({
+    where: { nombre: "Servicio" },
+  });
+
+  const item = await prisma.item.create({
+    data: { nombre: nombreLimpio, id_categoria: categoria.id_categoria },
+  });
+
+  revalidatePath("/");
+
+  return { id_item: item.id_item, nombre: item.nombre };
+}
+
+export async function borrarServicio(id_item: number) {
+  const item = await prisma.item.findUnique({
+    where: { id_item },
+    include: { categoria: true },
+  });
+  if (!item || item.categoria.nombre !== "Servicio") {
+    throw new Error("El ítem no es un servicio válido.");
+  }
+
+  await prisma.item.update({ where: { id_item }, data: { activo: false } });
+
+  revalidatePath("/");
+}

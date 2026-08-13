@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { DesktopNav, MobileNav } from "./NavLinks";
@@ -27,13 +28,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col bg-white text-black">
         <header className="sticky top-0 z-20 border-b-4 border-yellow-400 bg-black">
           <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3 md:px-6 md:py-4">
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded bg-yellow-400 text-lg font-black text-black md:h-11 md:w-11 md:text-xl">
-                R
-              </span>
-              <span className="text-lg font-bold tracking-wide text-white md:text-xl">
-                RENATO
-              </span>
+            <div className="rounded-lg bg-white px-3 py-2 md:px-4 md:py-2.5">
+              <Image
+                src="/renato-logo.png"
+                alt="Renato"
+                width={1702}
+                height={546}
+                priority
+                className="h-6 w-auto md:h-9"
+              />
             </div>
             <DesktopNav />
           </div>

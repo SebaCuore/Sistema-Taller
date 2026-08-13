@@ -4,44 +4,42 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-async function esCategoriaProducto(id_categoria: number) {
-  const categoria = await prisma.categoria.findUnique({ where: { id_categoria } });
-  return categoria?.nombre === "Producto";
+function readTipoVehiculo(formData: FormData): "MOTO" | "AUTO" {
+  const tipo = String(formData.get("tipo_vehiculo") ?? "");
+  if (tipo !== "MOTO" && tipo !== "AUTO") {
+    throw new Error("Elegí si el producto es para Moto o Auto.");
+  }
+  return tipo;
 }
 
-function readBaseFields(formData: FormData) {
+function readFields(formData: FormData) {
   const nombre = String(formData.get("nombre") ?? "").trim();
-  const id_categoria = Number(formData.get("id_categoria"));
-  const descripcion = String(formData.get("descripcion") ?? "").trim() || null;
-
-  if (!nombre || !id_categoria) {
-    throw new Error("Nombre y categoría son obligatorios.");
-  }
-
-  return { nombre, id_categoria, descripcion };
-}
-
-async function readPrecioStock(formData: FormData, id_categoria: number) {
-  const esProducto = await esCategoriaProducto(id_categoria);
-  if (!esProducto) {
-    return { precio_base: null, stock_actual: null };
-  }
-
   const precio_base = Number(formData.get("precio_base"));
   const stock_actual = Number(formData.get("stock_actual"));
+  const tipo_vehiculo = readTipoVehiculo(formData);
+
+  if (!nombre) {
+    throw new Error("El nombre es obligatorio.");
+  }
   if (Number.isNaN(precio_base) || Number.isNaN(stock_actual)) {
-    throw new Error("Precio y stock son obligatorios para un producto.");
+    throw new Error("Precio y cantidad son obligatorios.");
   }
 
-  return { precio_base, stock_actual };
+  return { nombre, precio_base, stock_actual, tipo_vehiculo };
 }
 
 export async function createItem(formData: FormData) {
-  const { nombre, id_categoria, descripcion } = readBaseFields(formData);
-  const { precio_base, stock_actual } = await readPrecioStock(formData, id_categoria);
+  const { nombre, precio_base, stock_actual, tipo_vehiculo } = readFields(formData);
+  const categoria = await prisma.categoria.findUniqueOrThrow({ where: { nombre: "Producto" } });
 
   await prisma.item.create({
-    data: { nombre, id_categoria, descripcion, precio_base, stock_actual },
+    data: {
+      nombre,
+      precio_base,
+      stock_actual,
+      tipo_vehiculo,
+      id_categoria: categoria.id_categoria,
+    },
   });
 
   revalidatePath("/stock");
@@ -50,12 +48,11 @@ export async function createItem(formData: FormData) {
 }
 
 export async function updateItem(id_item: number, formData: FormData) {
-  const { nombre, id_categoria, descripcion } = readBaseFields(formData);
-  const { precio_base, stock_actual } = await readPrecioStock(formData, id_categoria);
+  const { nombre, precio_base, stock_actual, tipo_vehiculo } = readFields(formData);
 
   await prisma.item.update({
     where: { id_item },
-    data: { nombre, id_categoria, descripcion, precio_base, stock_actual },
+    data: { nombre, precio_base, stock_actual, tipo_vehiculo },
   });
 
   revalidatePath("/stock");
@@ -65,6 +62,15 @@ export async function updateItem(id_item: number, formData: FormData) {
 
 export async function setActivo(id_item: number, activo: boolean) {
   await prisma.item.update({ where: { id_item }, data: { activo } });
+  revalidatePath("/stock");
+  revalidatePath("/");
+}
+
+export async function actualizarStock(id_item: number, cantidad: number) {
+  if (!Number.isFinite(cantidad)) {
+    throw new Error("Cantidad inválida.");
+  }
+  await prisma.item.update({ where: { id_item }, data: { stock_actual: cantidad } });
   revalidatePath("/stock");
   revalidatePath("/");
 }

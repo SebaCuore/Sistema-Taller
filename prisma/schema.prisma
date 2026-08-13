@@ -20,15 +20,21 @@ model Categoria {
   @@map("categorias")
 }
 
+enum TipoVehiculo {
+  MOTO
+  AUTO
+}
+
 model Item {
-  id_item      Int      @id @default(autoincrement())
-  id_categoria Int
-  nombre       String
-  descripcion  String?
-  imagen_url   String?
-  precio_base  Decimal? @db.Decimal(10, 2)
-  stock_actual Int?
-  activo       Boolean  @default(true)
+  id_item       Int           @id @default(autoincrement())
+  id_categoria  Int
+  nombre        String
+  descripcion   String?
+  imagen_url    String?
+  precio_base   Decimal?      @db.Decimal(10, 2)
+  stock_actual  Int?
+  tipo_vehiculo TipoVehiculo?
+  activo        Boolean       @default(true)
 
   categoria     Categoria      @relation(fields: [id_categoria], references: [id_categoria])
   detalle_venta DetalleVenta[]

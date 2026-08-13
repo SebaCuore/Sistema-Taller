@@ -13,10 +13,7 @@ export default async function EditarItemPage({
   const { id } = await params;
   const id_item = Number(id);
 
-  const [item, categorias] = await Promise.all([
-    prisma.item.findUnique({ where: { id_item } }),
-    prisma.categoria.findMany({ orderBy: { nombre: "asc" } }),
-  ]);
+  const item = await prisma.item.findUnique({ where: { id_item } });
 
   if (!item) notFound();
 
@@ -27,13 +24,11 @@ export default async function EditarItemPage({
       </h1>
       <ItemForm
         action={updateItem.bind(null, item.id_item)}
-        categorias={categorias}
         item={{
           nombre: item.nombre,
-          descripcion: item.descripcion,
-          id_categoria: item.id_categoria,
           precio_base: item.precio_base ? item.precio_base.toNumber() : null,
           stock_actual: item.stock_actual,
+          tipo_vehiculo: item.tipo_vehiculo,
         }}
       />
     </div>

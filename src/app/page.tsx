@@ -20,6 +20,7 @@ export default async function VentaPage() {
     categoria: item.categoria.nombre,
     precio_base: item.precio_base ? item.precio_base.toNumber() : null,
     stock_actual: item.stock_actual,
+    tipo_vehiculo: item.tipo_vehiculo,
   }));
 
   return (
