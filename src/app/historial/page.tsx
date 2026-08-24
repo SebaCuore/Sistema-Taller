@@ -89,7 +89,7 @@ export default async function HistorialPage({
         {ventas.map((venta) => {
           const gruposVehiculo = new Map<
             number,
-            { patente: string | null; lineas: typeof venta.detalles }
+            { patente: string | null; tipo_vehiculo: "MOTO" | "AUTO"; lineas: typeof venta.detalles }
           >();
           const lineasProducto: typeof venta.detalles = [];
 
@@ -99,7 +99,11 @@ export default async function HistorialPage({
               if (grupo) {
                 grupo.lineas.push(d);
               } else {
-                gruposVehiculo.set(d.id_vehiculo, { patente: d.vehiculo.patente, lineas: [d] });
+                gruposVehiculo.set(d.id_vehiculo, {
+                  patente: d.vehiculo.patente,
+                  tipo_vehiculo: d.vehiculo.tipo_vehiculo,
+                  lineas: [d],
+                });
               }
             } else {
               lineasProducto.push(d);
@@ -116,12 +120,14 @@ export default async function HistorialPage({
               </div>
 
               <div className="mt-2 flex flex-col gap-2">
-                {Array.from(gruposVehiculo.values()).map((grupo) => {
+                {Array.from(gruposVehiculo.entries()).map(([id_vehiculo, grupo]) => {
                   const subtotal = grupo.lineas.reduce((a, d) => a + d.subtotal.toNumber(), 0);
                   return (
-                    <div key={grupo.patente ?? "sin-patente"} className="rounded-lg bg-zinc-50 p-2">
+                    <div key={id_vehiculo} className="rounded-lg bg-zinc-50 p-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold">{vehiculoLabel(grupo.patente)}</span>
+                        <span className="text-sm font-bold">
+                          {vehiculoLabel(grupo.patente, grupo.tipo_vehiculo)}
+                        </span>
                         <span className="text-sm font-bold">{fmt(subtotal)}</span>
                       </div>
                       <ul className="mt-1 flex flex-col gap-0.5">

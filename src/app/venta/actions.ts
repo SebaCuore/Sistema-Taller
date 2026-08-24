@@ -16,6 +16,7 @@ export type LineaServicio = {
 
 export type GrupoVehiculo = {
   patente?: string;
+  tipo_vehiculo: "MOTO" | "AUTO";
   lineas: LineaServicio[];
 };
 
@@ -60,8 +61,15 @@ export async function confirmarVenta(
     }[] = [];
 
     for (const grupo of gruposConLineas) {
+      if (grupo.tipo_vehiculo !== "MOTO" && grupo.tipo_vehiculo !== "AUTO") {
+        throw new Error("Elegí si el vehículo es Moto o Auto.");
+      }
+
       const vehiculo = await tx.vehiculo.create({
-        data: { patente: grupo.patente?.trim().toUpperCase().slice(0, 12) || null },
+        data: {
+          patente: grupo.patente?.trim().toUpperCase().slice(0, 12) || null,
+          tipo_vehiculo: grupo.tipo_vehiculo,
+        },
       });
 
       for (const linea of grupo.lineas) {

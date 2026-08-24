@@ -80,9 +80,10 @@ enum Lado {
 // vehículo atendido. Se crea junto con la venta (no es un catálogo
 // reutilizable entre visitas) — ver Documentation/03-modelo-de-datos.md.
 model Vehiculo {
-  id_vehiculo Int      @id @default(autoincrement())
-  patente     String?
-  creado_en   DateTime @default(now())
+  id_vehiculo   Int          @id @default(autoincrement())
+  patente       String?
+  tipo_vehiculo TipoVehiculo
+  creado_en     DateTime     @default(now())
 
   detalles DetalleVenta[]
 

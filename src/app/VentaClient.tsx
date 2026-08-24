@@ -1,9 +1,17 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { confirmarVenta, crearServicio, borrarServicio } from "./venta/actions";
-import { RUEDA_LABEL, LADO_LABEL, infoRueda, vehiculoLabel, type Rueda, type Lado } from "@/lib/vehiculo";
+import {
+  RUEDA_LABEL,
+  LADO_LABEL,
+  TIPO_VEHICULO_LABEL,
+  infoRueda,
+  vehiculoLabel,
+  type Rueda,
+  type Lado,
+} from "@/lib/vehiculo";
 
 type TipoVehiculoProducto = "MOTO" | "AUTO";
 
@@ -37,6 +45,7 @@ type CartServicioLine = {
 type VehiculoGrupo = {
   key: string;
   patente?: string;
+  tipo_vehiculo: TipoVehiculoProducto;
   lineas: CartServicioLine[];
 };
 
@@ -55,6 +64,19 @@ const TAB_LABEL: Record<string, string> = {
   Servicio: "Vehículos",
   Producto: "Productos",
 };
+
+// El carrito (vehículos con sus servicios y productos sueltos) se guarda acá
+// para sobrevivir a la navegación entre pantallas: un vehículo cargado y no
+// cobrado todavía debe seguir ahí al volver a Ventas.
+const CART_STORAGE_KEY = "sistema-taller:venta-carrito";
+
+function newKey(prefix: string) {
+  const random =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}-${random}`;
+}
 
 function BorrarServicioButton({ id_item }: { id_item: number }) {
   const router = useRouter();
@@ -162,10 +184,38 @@ export function VentaClient({
   const [filtroTipo, setFiltroTipo] = useState<"TODOS" | TipoVehiculoProducto>("TODOS");
   const [vehiculos, setVehiculos] = useState<VehiculoGrupo[]>([]);
   const [productos, setProductos] = useState<CartProductoLine[]>([]);
-  const keyCounter = useRef(0);
+  const skipPersist = useRef(true);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(CART_STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw) as { vehiculos?: VehiculoGrupo[]; productos?: CartProductoLine[] };
+      // Hidratar desde localStorage solo puede pasar después del montaje (el
+      // server nunca ve localStorage), así que esto corre una única vez acá.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (Array.isArray(data.vehiculos)) setVehiculos(data.vehiculos);
+      if (Array.isArray(data.productos)) setProductos(data.productos);
+    } catch {
+      // localStorage no disponible o con datos corruptos: se sigue con el carrito vacío.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (skipPersist.current) {
+      skipPersist.current = false;
+      return;
+    }
+    try {
+      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify({ vehiculos, productos }));
+    } catch {
+      // localStorage lleno o no disponible: no es crítico, solo se pierde la persistencia.
+    }
+  }, [vehiculos, productos]);
 
   const [nuevoVehiculoOpen, setNuevoVehiculoOpen] = useState(false);
   const [nuevoVehiculoPatente, setNuevoVehiculoPatente] = useState("");
+  const [nuevoVehiculoTipo, setNuevoVehiculoTipo] = useState<TipoVehiculoProducto | null>(null);
 
   const [editPatenteKey, setEditPatenteKey] = useState<string | null>(null);
   const [editPatenteValue, setEditPatenteValue] = useState("");
@@ -216,14 +266,19 @@ export function VentaClient({
 
   function abrirNuevoVehiculo() {
     setNuevoVehiculoPatente("");
+    setNuevoVehiculoTipo(null);
     setNuevoVehiculoOpen(true);
   }
 
   function confirmarNuevoVehiculo() {
-    keyCounter.current += 1;
-    const key = `vehiculo-${keyCounter.current}`;
+    if (!nuevoVehiculoTipo) {
+      setErrorMsg("Elegí si el vehículo es Moto o Auto.");
+      return;
+    }
+    setErrorMsg(null);
+    const key = newKey("vehiculo");
     const patente = nuevoVehiculoPatente.trim().toUpperCase() || undefined;
-    setVehiculos((prev) => [...prev, { key, patente, lineas: [] }]);
+    setVehiculos((prev) => [...prev, { key, patente, tipo_vehiculo: nuevoVehiculoTipo, lineas: [] }]);
     setNuevoVehiculoOpen(false);
     setPickerBusqueda("");
     setPickerVehiculoKey(key);
@@ -332,9 +387,8 @@ export function VentaClient({
       setErrorMsg("Ingresá un monto válido.");
       return;
     }
-    keyCounter.current += 1;
     const linea: CartServicioLine = {
-      key: `servicio-${modalItem.id_item}-${keyCounter.current}`,
+      key: newKey(`servicio-${modalItem.id_item}`),
       id_item: modalItem.id_item,
       nombre: modalItem.nombre,
       monto,
@@ -380,6 +434,7 @@ export function VentaClient({
         const res = await confirmarVenta(
           vehiculosConLineas.map((v) => ({
             patente: v.patente,
+            tipo_vehiculo: v.tipo_vehiculo,
             lineas: v.lineas.map((l) => ({
               id_item: l.id_item,
               cantidad: l.cantidad,
@@ -461,7 +516,9 @@ export function VentaClient({
                 <div key={v.key} className="rounded-lg border-2 border-black bg-white p-3 md:p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-col">
-                      <span className="text-sm font-bold md:text-base">{vehiculoLabel(v.patente)}</span>
+                      <span className="text-sm font-bold md:text-base">
+                        {vehiculoLabel(v.patente, v.tipo_vehiculo)}
+                      </span>
                       {v.lineas.length > 0 && (
                         <span className="text-xs font-semibold text-black/60">{fmt(subtotal)}</span>
                       )}
@@ -619,6 +676,26 @@ export function VentaClient({
               />
             </div>
 
+            <div className="mt-4 flex flex-col gap-1">
+              <span className="text-sm font-bold tracking-wide uppercase">Tipo</span>
+              <div className="grid grid-cols-2 gap-3">
+                {(["MOTO", "AUTO"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setNuevoVehiculoTipo(t)}
+                    className={`rounded-lg border-2 border-black py-2.5 text-sm font-bold tracking-wide uppercase transition active:scale-[0.97] ${
+                      nuevoVehiculoTipo === t
+                        ? "bg-yellow-400 text-black"
+                        : "bg-white text-black hover:bg-black hover:text-white"
+                    }`}
+                  >
+                    {TIPO_VEHICULO_LABEL[t]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="mt-5 flex gap-2">
               <button
                 onClick={() => setNuevoVehiculoOpen(false)}
@@ -679,7 +756,9 @@ export function VentaClient({
         <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60 md:items-center">
           <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-t-2xl border-4 border-black bg-white p-4 md:rounded-2xl md:p-6">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-lg font-bold uppercase tracking-wide">{vehiculoLabel(pickerVehiculo.patente)}</p>
+              <p className="text-lg font-bold uppercase tracking-wide">
+                {vehiculoLabel(pickerVehiculo.patente, pickerVehiculo.tipo_vehiculo)}
+              </p>
               <button
                 onClick={() => setPickerVehiculoKey(null)}
                 className="rounded-lg border-2 border-black bg-white px-3 py-2.5 text-xs font-bold uppercase active:scale-[0.97] hover:bg-black hover:text-white"
@@ -953,7 +1032,7 @@ export function VentaClient({
                 return (
                   <div key={v.key} className="border-b-2 border-black/10 py-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold">{vehiculoLabel(v.patente)}</span>
+                      <span className="text-sm font-bold">{vehiculoLabel(v.patente, v.tipo_vehiculo)}</span>
                       <span className="text-sm font-bold">{fmt(subtotal)}</span>
                     </div>
                     <ul className="mt-1 flex flex-col gap-0.5">

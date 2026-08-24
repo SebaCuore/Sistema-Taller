@@ -35,7 +35,8 @@
 
 **`vehiculos`** — Agrupa los servicios de una misma venta bajo el vehículo atendido.
 - `id_vehiculo` (PK)
-- `patente` (opcional) — único dato que se carga al agregar un vehículo.
+- `patente` (opcional)
+- `tipo_vehiculo` (Moto/Auto, obligatorio)
 - `creado_en`
 
 No es un catálogo reutilizable entre visitas: se crea junto con la venta que lo usa (ver regla 4 más abajo).
