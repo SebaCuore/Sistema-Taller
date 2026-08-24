@@ -76,20 +76,36 @@ enum Lado {
   IZQUIERDA
 }
 
+// Agrupa uno o más servicios cargados en una misma venta bajo un mismo
+// vehículo atendido. Se crea junto con la venta (no es un catálogo
+// reutilizable entre visitas) — ver Documentation/03-modelo-de-datos.md.
+model Vehiculo {
+  id_vehiculo Int      @id @default(autoincrement())
+  patente     String?
+  creado_en   DateTime @default(now())
+
+  detalles DetalleVenta[]
+
+  @@index([patente])
+  @@map("vehiculos")
+}
+
 model DetalleVenta {
   id_detalle      Int     @id @default(autoincrement())
   id_venta        Int
   id_item         Int
+  id_vehiculo     Int?
   cantidad        Int
   precio_unitario Decimal @db.Decimal(10, 2)
   subtotal        Decimal @db.Decimal(10, 2)
-  patente         String?
+  descripcion     String?
   rueda           Rueda?
   lado            Lado?
 
-  venta Venta @relation(fields: [id_venta], references: [id_venta])
-  item  Item  @relation(fields: [id_item], references: [id_item])
+  venta    Venta     @relation(fields: [id_venta], references: [id_venta])
+  item     Item      @relation(fields: [id_item], references: [id_item])
+  vehiculo Vehiculo? @relation(fields: [id_vehiculo], references: [id_vehiculo])
 
-  @@index([patente])
+  @@index([id_vehiculo])
   @@map("detalles_venta")
 }

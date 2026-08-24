@@ -4,7 +4,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { DateFilterForm } from "./DateFilterForm";
 import { BuscarPatenteForm } from "./BuscarPatenteForm";
 import { DeleteVentaButton } from "./DeleteVentaButton";
-import { infoVehiculo } from "@/lib/vehiculo";
+import { infoRueda, vehiculoLabel } from "@/lib/vehiculo";
 import { verifySession } from "@/lib/dal";
 
 export const dynamic = "force-dynamic";
@@ -48,31 +48,19 @@ export default async function HistorialPage({
     where.fecha_hora = { gte: inicio, lte: fin };
   }
   if (patenteQuery) {
-    where.detalles = { some: { patente: { contains: patenteQuery, mode: "insensitive" } } };
+    where.detalles = { some: { vehiculo: { patente: { contains: patenteQuery, mode: "insensitive" } } } };
   }
 
   const ventas = await prisma.venta.findMany({
     where,
     include: {
       metodo_pago: true,
-      detalles: { include: { item: { include: { categoria: true } } } },
+      detalles: { include: { item: true, vehiculo: true } },
     },
     orderBy: { fecha_hora: "desc" },
   });
 
   const totalDia = ventas.reduce((acc, v) => acc + v.monto_total.toNumber(), 0);
-
-  const resumenServicios = new Map<string, number>();
-  for (const venta of ventas) {
-    for (const d of venta.detalles) {
-      if (d.item.categoria.nombre === "Servicio") {
-        resumenServicios.set(d.item.nombre, (resumenServicios.get(d.item.nombre) ?? 0) + d.cantidad);
-      }
-    }
-  }
-  const resumenServiciosOrdenado = Array.from(resumenServicios.entries()).sort(
-    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
-  );
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 pb-8 md:gap-6 md:p-6">
@@ -97,44 +85,85 @@ export default async function HistorialPage({
         </p>
       )}
 
-      {resumenServiciosOrdenado.length > 0 && (
-        <div className="rounded-lg border-2 border-black bg-white p-3 md:p-4">
-          <p className="mb-2 text-sm font-bold tracking-wide uppercase">Servicios</p>
-          <div className="flex flex-wrap gap-2">
-            {resumenServiciosOrdenado.map(([nombre, cantidad]) => (
-              <span
-                key={nombre}
-                className="rounded-lg border-2 border-black bg-yellow-400 px-3 py-1.5 text-sm font-bold text-black"
-              >
-                {nombre}: {cantidad}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="flex flex-col gap-3">
-        {ventas.map((venta) => (
-          <div key={venta.id_venta} className="rounded-lg border-2 border-black bg-white p-3 md:p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-bold">
-                {fmtHora(venta.fecha_hora)} hs · {venta.metodo_pago.nombre}
-              </span>
-              <span className="text-lg font-black">{fmt(venta.monto_total.toNumber())}</span>
+        {ventas.map((venta) => {
+          const gruposVehiculo = new Map<
+            number,
+            { patente: string | null; lineas: typeof venta.detalles }
+          >();
+          const lineasProducto: typeof venta.detalles = [];
+
+          for (const d of venta.detalles) {
+            if (d.id_vehiculo && d.vehiculo) {
+              const grupo = gruposVehiculo.get(d.id_vehiculo);
+              if (grupo) {
+                grupo.lineas.push(d);
+              } else {
+                gruposVehiculo.set(d.id_vehiculo, { patente: d.vehiculo.patente, lineas: [d] });
+              }
+            } else {
+              lineasProducto.push(d);
+            }
+          }
+
+          return (
+            <div key={venta.id_venta} className="rounded-lg border-2 border-black bg-white p-3 md:p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold">
+                  {fmtHora(venta.fecha_hora)} hs · {venta.metodo_pago.nombre}
+                </span>
+                <span className="text-lg font-black">{fmt(venta.monto_total.toNumber())}</span>
+              </div>
+
+              <div className="mt-2 flex flex-col gap-2">
+                {Array.from(gruposVehiculo.values()).map((grupo) => {
+                  const subtotal = grupo.lineas.reduce((a, d) => a + d.subtotal.toNumber(), 0);
+                  return (
+                    <div key={grupo.patente ?? "sin-patente"} className="rounded-lg bg-zinc-50 p-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold">{vehiculoLabel(grupo.patente)}</span>
+                        <span className="text-sm font-bold">{fmt(subtotal)}</span>
+                      </div>
+                      <ul className="mt-1 flex flex-col gap-0.5">
+                        {grupo.lineas.map((d) => (
+                          <li key={d.id_detalle} className="text-sm text-black/70">
+                            {d.item.nombre} x{d.cantidad} — {fmt(d.subtotal.toNumber())}
+                            {infoRueda(d) && <span className="block text-xs text-black/50">{infoRueda(d)}</span>}
+                            {d.descripcion && (
+                              <span className="block text-xs text-black/50">{d.descripcion}</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+
+                {lineasProducto.length > 0 && (
+                  <div className="rounded-lg bg-zinc-50 p-2">
+                    {gruposVehiculo.size > 0 && (
+                      <p className="mb-1 text-xs font-bold tracking-wide text-black/50 uppercase">Productos</p>
+                    )}
+                    <ul className="flex flex-col gap-0.5">
+                      {lineasProducto.map((d) => (
+                        <li key={d.id_detalle} className="text-sm text-black/70">
+                          {d.item.nombre} x{d.cantidad} — {fmt(d.subtotal.toNumber())}
+                          {d.descripcion && (
+                            <span className="block text-xs text-black/50">{d.descripcion}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-2 flex justify-end">
+                <DeleteVentaButton id_venta={venta.id_venta} />
+              </div>
             </div>
-            <ul className="mt-1 flex flex-col gap-0.5">
-              {venta.detalles.map((d) => (
-                <li key={d.id_detalle} className="text-sm text-black/70">
-                  {d.item.nombre} x{d.cantidad} — {fmt(d.subtotal.toNumber())}
-                  {infoVehiculo(d) && <span className="block text-xs text-black/50">{infoVehiculo(d)}</span>}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-2 flex justify-end">
-              <DeleteVentaButton id_venta={venta.id_venta} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
         {ventas.length === 0 && (
           <p className="py-8 text-center text-sm font-medium text-black/50">
             {patenteQuery ? "No se encontraron ventas con esa patente." : "No hay ventas ese día."}
