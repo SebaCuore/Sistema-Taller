@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { setActivo } from "./actions";
+import { verifySession } from "@/lib/dal";
+import { ActivoButton } from "./ActivoButton";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,8 @@ export default async function StockPage({
 }: {
   searchParams: Promise<{ estado?: string; tipo?: string }>;
 }) {
+  await verifySession();
+
   const { estado = "activos", tipo = "todos" } = await searchParams;
 
   const items = await prisma.item.findMany({
@@ -90,7 +94,7 @@ export default async function StockPage({
               key={item.id_item}
               className="flex items-center justify-between gap-3 rounded-lg border-2 border-black bg-white p-3 md:p-4"
             >
-              <div className="flex flex-col">
+              <div className="flex min-w-0 flex-col">
                 <span className="text-[11px] font-bold tracking-wide text-black/50 uppercase">
                   {item.tipo_vehiculo === "MOTO"
                     ? "Moto"
@@ -98,7 +102,7 @@ export default async function StockPage({
                       ? "Auto"
                       : "Sin tipo"}
                 </span>
-                <span className="font-bold">{item.nombre}</span>
+                <span className="truncate font-bold">{item.nombre}</span>
                 <span className="text-sm font-semibold text-black/70">
                   ${item.precio_base?.toNumber().toFixed(2) ?? "-"} · Stock:{" "}
                   <span className={sinStock ? "font-bold text-black" : undefined}>
@@ -119,14 +123,7 @@ export default async function StockPage({
                   Editar
                 </Link>
                 <form action={setActivo.bind(null, item.id_item, !item.activo)}>
-                  <button
-                    type="submit"
-                    className={`rounded-lg border-2 border-black px-3 py-1.5 text-xs font-bold tracking-wide uppercase active:scale-[0.97] ${
-                      item.activo ? "bg-yellow-400 text-black" : "bg-white text-black/60"
-                    }`}
-                  >
-                    {item.activo ? "Activo" : "Inactivo"}
-                  </button>
+                  <ActivoButton activo={item.activo} />
                 </form>
               </div>
             </div>

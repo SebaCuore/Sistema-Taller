@@ -1,12 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import Link from "next/link";
 
 type TipoVehiculo = "MOTO" | "AUTO";
 
 const inputClass =
   "rounded-lg border-2 border-black px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-yellow-400";
+
+function GuardarButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="flex-1 rounded-lg border-4 border-black bg-yellow-400 py-4 text-center text-lg font-black tracking-wide uppercase text-black transition active:scale-[0.98] hover:bg-black hover:text-yellow-400 disabled:border-zinc-300 disabled:bg-zinc-200 disabled:text-zinc-500"
+    >
+      {pending ? "Guardando..." : "Guardar"}
+    </button>
+  );
+}
 
 export function ItemForm({
   action,
@@ -95,16 +109,11 @@ export function ItemForm({
       <div className="flex gap-3">
         <Link
           href="/stock"
-          className="flex-1 rounded-lg border-2 border-black bg-white py-4 text-center text-sm font-bold tracking-wide uppercase text-black transition active:scale-[0.97] hover:bg-black hover:text-white"
+          className="flex-1 rounded-lg border-2 border-black bg-red-600 py-4 text-center text-sm font-bold tracking-wide uppercase text-white transition active:scale-[0.97] hover:bg-black hover:text-red-500"
         >
           Cancelar
         </Link>
-        <button
-          type="submit"
-          className="flex-1 rounded-lg border-4 border-black bg-yellow-400 py-4 text-center text-lg font-black tracking-wide uppercase text-black transition active:scale-[0.98] hover:bg-black hover:text-yellow-400"
-        >
-          Guardar
-        </button>
+        <GuardarButton />
       </div>
     </form>
   );

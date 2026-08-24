@@ -1,6 +1,11 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { DateFilterForm } from "./DateFilterForm";
+import { BuscarPatenteForm } from "./BuscarPatenteForm";
 import { DeleteVentaButton } from "./DeleteVentaButton";
+import { infoVehiculo } from "@/lib/vehiculo";
+import { verifySession } from "@/lib/dal";
 
 export const dynamic = "force-dynamic";
 
@@ -18,20 +23,36 @@ function rangoDelDia(fecha: string) {
 }
 
 const fmt = (n: number) => `$${n.toFixed(2)}`;
+
 const fmtHora = (d: Date) =>
   d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: ZONA });
 
 export default async function HistorialPage({
   searchParams,
 }: {
-  searchParams: Promise<{ fecha?: string }>;
+  searchParams: Promise<{ fecha?: string; patente?: string }>;
 }) {
-  const { fecha: fechaParam } = await searchParams;
+  await verifySession();
+
+  const { fecha: fechaParam, patente: patenteParam } = await searchParams;
+  const patenteQuery = (patenteParam ?? "").trim();
+
+  // Con patente activa y sin fecha elegida a mano, se busca en todo el
+  // historial. Sin patente, el comportamiento de siempre: por defecto "hoy".
+  const usarFiltroFecha = Boolean(fechaParam) || !patenteQuery;
   const fecha = fechaParam || hoyArgentina();
-  const { inicio, fin } = rangoDelDia(fecha);
+
+  const where: Prisma.VentaWhereInput = {};
+  if (usarFiltroFecha) {
+    const { inicio, fin } = rangoDelDia(fecha);
+    where.fecha_hora = { gte: inicio, lte: fin };
+  }
+  if (patenteQuery) {
+    where.detalles = { some: { patente: { contains: patenteQuery, mode: "insensitive" } } };
+  }
 
   const ventas = await prisma.venta.findMany({
-    where: { fecha_hora: { gte: inicio, lte: fin } },
+    where,
     include: {
       metodo_pago: true,
       detalles: { include: { item: { include: { categoria: true } } } },
@@ -55,18 +76,30 @@ export default async function HistorialPage({
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 pb-8 md:gap-6 md:p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-bold tracking-wide uppercase md:text-2xl">Historial</h1>
-        <span className="rounded-lg border-2 border-black bg-yellow-400 px-4 py-2 text-sm font-black">
-          {fmt(totalDia)}
-        </span>
+        {usarFiltroFecha && (
+          <span className="rounded-lg border-2 border-black bg-yellow-400 px-4 py-2 text-sm font-black">
+            {fmt(totalDia)}
+          </span>
+        )}
       </div>
 
       <DateFilterForm fecha={fecha} />
+      <BuscarPatenteForm patente={patenteQuery} />
+
+      {patenteQuery && !fechaParam && (
+        <p className="text-sm font-medium text-black/60">
+          Mostrando resultados de <strong>todas las fechas</strong> para la patente buscada.{" "}
+          <Link href={`/historial?fecha=${fecha}`} className="underline">
+            Volver a hoy
+          </Link>
+        </p>
+      )}
 
       {resumenServiciosOrdenado.length > 0 && (
         <div className="rounded-lg border-2 border-black bg-white p-3 md:p-4">
-          <p className="mb-2 text-sm font-bold tracking-wide uppercase">Servicios del día</p>
+          <p className="mb-2 text-sm font-bold tracking-wide uppercase">Servicios</p>
           <div className="flex flex-wrap gap-2">
             {resumenServiciosOrdenado.map(([nombre, cantidad]) => (
               <span
@@ -93,6 +126,7 @@ export default async function HistorialPage({
               {venta.detalles.map((d) => (
                 <li key={d.id_detalle} className="text-sm text-black/70">
                   {d.item.nombre} x{d.cantidad} — {fmt(d.subtotal.toNumber())}
+                  {infoVehiculo(d) && <span className="block text-xs text-black/50">{infoVehiculo(d)}</span>}
                 </li>
               ))}
             </ul>
@@ -103,7 +137,7 @@ export default async function HistorialPage({
         ))}
         {ventas.length === 0 && (
           <p className="py-8 text-center text-sm font-medium text-black/50">
-            No hay ventas ese día.
+            {patenteQuery ? "No se encontraron ventas con esa patente." : "No hay ventas ese día."}
           </p>
         )}
       </div>

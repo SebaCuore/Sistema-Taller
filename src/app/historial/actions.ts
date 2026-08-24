@@ -2,8 +2,11 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { verifySession } from "@/lib/dal";
 
 export async function borrarVenta(id_venta: number) {
+  await verifySession();
+
   await prisma.$transaction(async (tx) => {
     const detalles = await tx.detalleVenta.findMany({
       where: { id_venta },

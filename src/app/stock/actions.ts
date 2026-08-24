@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { verifySession } from "@/lib/dal";
 
 function readTipoVehiculo(formData: FormData): "MOTO" | "AUTO" {
   const tipo = String(formData.get("tipo_vehiculo") ?? "");
@@ -29,6 +30,8 @@ function readFields(formData: FormData) {
 }
 
 export async function createItem(formData: FormData) {
+  await verifySession();
+
   const { nombre, precio_base, stock_actual, tipo_vehiculo } = readFields(formData);
   const categoria = await prisma.categoria.findUniqueOrThrow({ where: { nombre: "Producto" } });
 
@@ -48,6 +51,8 @@ export async function createItem(formData: FormData) {
 }
 
 export async function updateItem(id_item: number, formData: FormData) {
+  await verifySession();
+
   const { nombre, precio_base, stock_actual, tipo_vehiculo } = readFields(formData);
 
   await prisma.item.update({
@@ -61,12 +66,16 @@ export async function updateItem(id_item: number, formData: FormData) {
 }
 
 export async function setActivo(id_item: number, activo: boolean) {
+  await verifySession();
+
   await prisma.item.update({ where: { id_item }, data: { activo } });
   revalidatePath("/stock");
   revalidatePath("/");
 }
 
 export async function actualizarStock(id_item: number, cantidad: number) {
+  await verifySession();
+
   if (!Number.isFinite(cantidad)) {
     throw new Error("Cantidad inválida.");
   }

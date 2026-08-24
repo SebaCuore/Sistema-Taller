@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { updateItem } from "../../actions";
 import { ItemForm } from "../../ItemForm";
+import { verifySession } from "@/lib/dal";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,8 @@ export default async function EditarItemPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await verifySession();
+
   const { id } = await params;
   const id_item = Number(id);
 

@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { confirmarVenta, crearServicio, borrarServicio } from "./venta/actions";
+import { RUEDA_LABEL, LADO_LABEL, infoVehiculo, type Rueda, type Lado } from "@/lib/vehiculo";
 
 type TipoVehiculo = "MOTO" | "AUTO";
 
@@ -29,6 +30,9 @@ type CartLine = {
   esServicio: boolean;
   precioUnitario: number;
   cantidad: number;
+  patente?: string;
+  rueda?: Rueda;
+  lado?: Lado;
 };
 
 const fmt = (n: number) => `$${n.toFixed(2)}`;
@@ -37,6 +41,84 @@ const TAB_LABEL: Record<string, string> = {
   Servicio: "Servicios",
   Producto: "Productos",
 };
+
+function CamposVehiculo({
+  patente,
+  rueda,
+  lado,
+  onPatenteChange,
+  onRuedaChange,
+  onLadoChange,
+  idPrefix,
+}: {
+  patente: string;
+  rueda: Rueda | null;
+  lado: Lado | null;
+  onPatenteChange: (v: string) => void;
+  onRuedaChange: (v: Rueda) => void;
+  onLadoChange: (v: Lado) => void;
+  idPrefix: string;
+}) {
+  return (
+    <>
+      <div className="mt-4 flex flex-col gap-1">
+        <label className="text-sm font-bold tracking-wide uppercase" htmlFor={`${idPrefix}-patente`}>
+          Patente (opcional)
+        </label>
+        <input
+          id={`${idPrefix}-patente`}
+          type="text"
+          value={patente}
+          onChange={(e) => onPatenteChange(e.target.value)}
+          placeholder="Ej: AB123CD"
+          className="rounded-lg border-2 border-black px-3 py-3 text-base font-bold uppercase focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+        />
+      </div>
+
+      <div className="mt-4 flex flex-col gap-1">
+        <span className="text-sm font-bold tracking-wide uppercase">Rueda (opcional)</span>
+        <div className="grid grid-cols-2 gap-3">
+          {(["DELANTERA", "TRASERA"] as const).map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => onRuedaChange(r)}
+              className={`rounded-lg border-2 border-black py-2.5 text-sm font-bold tracking-wide uppercase transition active:scale-[0.97] ${
+                rueda === r
+                  ? "bg-yellow-400 text-black"
+                  : "bg-white text-black hover:bg-black hover:text-white"
+              }`}
+            >
+              {RUEDA_LABEL[r]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {rueda && (
+        <div className="mt-4 flex flex-col gap-1">
+          <span className="text-sm font-bold tracking-wide uppercase">Lado (opcional)</span>
+          <div className="grid grid-cols-2 gap-3">
+            {(["DERECHA", "IZQUIERDA"] as const).map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => onLadoChange(l)}
+                className={`rounded-lg border-2 border-black py-2.5 text-sm font-bold tracking-wide uppercase transition active:scale-[0.97] ${
+                  lado === l
+                    ? "bg-yellow-400 text-black"
+                    : "bg-white text-black hover:bg-black hover:text-white"
+                }`}
+              >
+                {LADO_LABEL[l]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 function BorrarServicioButton({ id_item }: { id_item: number }) {
   const router = useRouter();
@@ -50,7 +132,7 @@ function BorrarServicioButton({ id_item }: { id_item: number }) {
           type="button"
           onClick={() => setConfirmando(false)}
           disabled={pending}
-          className="rounded-lg border-2 border-black bg-white px-2.5 py-2.5 text-xs font-bold tracking-wide uppercase transition active:scale-[0.97] hover:bg-black hover:text-white md:py-3"
+          className="rounded-lg border-2 border-black bg-red-600 px-2.5 py-2.5 text-xs font-bold tracking-wide uppercase text-white transition active:scale-[0.97] hover:bg-black hover:text-red-500 md:py-3"
         >
           No
         </button>
@@ -63,7 +145,7 @@ function BorrarServicioButton({ id_item }: { id_item: number }) {
               router.refresh();
             })
           }
-          className="rounded-lg border-2 border-black bg-black px-2.5 py-2.5 text-xs font-bold tracking-wide uppercase text-white transition active:scale-[0.97] disabled:opacity-50 md:py-3"
+          className="rounded-lg border-2 border-black bg-yellow-400 px-2.5 py-2.5 text-xs font-bold tracking-wide uppercase text-black transition active:scale-[0.97] hover:bg-black hover:text-yellow-400 disabled:opacity-50 md:py-3"
         >
           {pending ? "..." : "Sí"}
         </button>
@@ -101,10 +183,18 @@ export function VentaClient({
   const [modalItem, setModalItem] = useState<ItemVenta | null>(null);
   const [modalMonto, setModalMonto] = useState("");
   const [modalCantidad, setModalCantidad] = useState(1);
+  const [modalPatente, setModalPatente] = useState("");
+  const [modalRueda, setModalRueda] = useState<Rueda | null>(null);
+  const [modalLado, setModalLado] = useState<Lado | null>(null);
 
   const [nuevoServicioOpen, setNuevoServicioOpen] = useState(false);
   const [nuevoServicioNombre, setNuevoServicioNombre] = useState("");
   const [pendingServicio, startTransitionServicio] = useTransition();
+
+  const [editandoKey, setEditandoKey] = useState<string | null>(null);
+  const [editPatente, setEditPatente] = useState("");
+  const [editRueda, setEditRueda] = useState<Rueda | null>(null);
+  const [editLado, setEditLado] = useState<Lado | null>(null);
 
   const [cartOpen, setCartOpen] = useState(false);
   const [metodoPagoId, setMetodoPagoId] = useState<number | null>(metodosPago[0]?.id ?? null);
@@ -173,6 +263,14 @@ export function VentaClient({
     setModalItem(item);
     setModalMonto("");
     setModalCantidad(1);
+    setModalPatente("");
+    setModalRueda(null);
+    setModalLado(null);
+  }
+
+  function elegirModalRueda(rueda: Rueda) {
+    setModalRueda((prev) => (prev === rueda ? null : rueda));
+    setModalLado(null);
   }
 
   function confirmarModalServicio() {
@@ -192,6 +290,9 @@ export function VentaClient({
         esServicio: true,
         precioUnitario: monto,
         cantidad: modalCantidad,
+        patente: modalPatente.trim() || undefined,
+        rueda: modalRueda ?? undefined,
+        lado: modalLado ?? undefined,
       },
     ]);
     setModalItem(null);
@@ -199,6 +300,40 @@ export function VentaClient({
 
   function quitarLinea(key: string) {
     setCart((prev) => prev.filter((l) => l.key !== key));
+  }
+
+  function abrirEditorVehiculo(l: CartLine) {
+    setEditandoKey(l.key);
+    setEditPatente(l.patente ?? "");
+    setEditRueda(l.rueda ?? null);
+    setEditLado(l.lado ?? null);
+  }
+
+  function elegirEditRueda(rueda: Rueda) {
+    setEditRueda((prev) => (prev === rueda ? null : rueda));
+    setEditLado(null);
+  }
+
+  function elegirEditLado(lado: Lado) {
+    setEditLado((prev) => (prev === lado ? null : lado));
+  }
+
+  function guardarVehiculo() {
+    const patente = editPatente.trim() || undefined;
+    setCart((prev) =>
+      prev.map((l) =>
+        l.key === editandoKey
+          ? { ...l, patente, rueda: editRueda ?? undefined, lado: editLado ?? undefined }
+          : l
+      )
+    );
+    setEditandoKey(null);
+  }
+
+  function aplicarATodasLasLineas() {
+    const patente = editPatente.trim() || undefined;
+    setCart((prev) => prev.map((l) => ({ ...l, patente })));
+    setEditandoKey(null);
   }
 
   const total = cart.reduce((acc, l) => acc + l.precioUnitario * l.cantidad, 0);
@@ -217,6 +352,9 @@ export function VentaClient({
             id_item: l.id_item,
             cantidad: l.cantidad,
             monto: l.esServicio ? l.precioUnitario : undefined,
+            patente: l.patente,
+            rueda: l.rueda,
+            lado: l.lado,
           })),
           metodoPagoId
         );
@@ -234,12 +372,20 @@ export function VentaClient({
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 pb-32 md:gap-6 md:p-6 md:pb-24">
       {successMsg && (
-        <p className="rounded-lg border-2 border-black bg-yellow-400 px-4 py-3 text-sm font-bold text-black">
+        <p
+          role="status"
+          aria-live="polite"
+          className="rounded-lg border-2 border-black bg-yellow-400 px-4 py-3 text-sm font-bold text-black"
+        >
           {successMsg}
         </p>
       )}
       {errorMsg && (
-        <p className="rounded-lg border-2 border-yellow-400 bg-black px-4 py-3 text-sm font-bold text-white">
+        <p
+          role="alert"
+          aria-live="polite"
+          className="rounded-lg border-2 border-yellow-400 bg-black px-4 py-3 text-sm font-bold text-white"
+        >
           {errorMsg}
         </p>
       )}
@@ -386,24 +532,34 @@ export function VentaClient({
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setModalCantidad((c) => Math.max(1, c - 1))}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border-2 border-black bg-white text-xl font-black active:scale-[0.95] hover:bg-black hover:text-white"
+                  className="flex h-11 w-11 items-center justify-center rounded-lg border-2 border-black bg-white text-xl font-black active:scale-[0.95] hover:bg-black hover:text-white"
                 >
                   −
                 </button>
                 <span className="w-6 text-center text-lg font-bold">{modalCantidad}</span>
                 <button
                   onClick={() => setModalCantidad((c) => c + 1)}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border-2 border-black bg-white text-xl font-black active:scale-[0.95] hover:bg-black hover:text-white"
+                  className="flex h-11 w-11 items-center justify-center rounded-lg border-2 border-black bg-white text-xl font-black active:scale-[0.95] hover:bg-black hover:text-white"
                 >
                   +
                 </button>
               </div>
             </div>
 
+            <CamposVehiculo
+              idPrefix="modal"
+              patente={modalPatente}
+              rueda={modalRueda}
+              lado={modalLado}
+              onPatenteChange={setModalPatente}
+              onRuedaChange={elegirModalRueda}
+              onLadoChange={(l) => setModalLado((prev) => (prev === l ? null : l))}
+            />
+
             <div className="mt-5 flex gap-2">
               <button
                 onClick={() => setModalItem(null)}
-                className="flex-1 rounded-lg border-2 border-black bg-white py-3 text-sm font-bold tracking-wide uppercase active:scale-[0.97] hover:bg-black hover:text-white"
+                className="flex-1 rounded-lg border-2 border-black bg-red-600 py-3 text-sm font-bold tracking-wide uppercase text-white active:scale-[0.97] hover:bg-black hover:text-red-500"
               >
                 Cancelar
               </button>
@@ -441,7 +597,7 @@ export function VentaClient({
             <div className="mt-5 flex gap-2">
               <button
                 onClick={() => setNuevoServicioOpen(false)}
-                className="flex-1 rounded-lg border-2 border-black bg-white py-3 text-sm font-bold tracking-wide uppercase active:scale-[0.97] hover:bg-black hover:text-white"
+                className="flex-1 rounded-lg border-2 border-black bg-red-600 py-3 text-sm font-bold tracking-wide uppercase text-white active:scale-[0.97] hover:bg-black hover:text-red-500"
               >
                 Cancelar
               </button>
@@ -474,7 +630,7 @@ export function VentaClient({
               <p className="text-lg font-bold uppercase tracking-wide">Ticket</p>
               <button
                 onClick={() => setCartOpen(false)}
-                className="rounded-lg border-2 border-black bg-white px-3 py-1.5 text-xs font-bold uppercase active:scale-[0.97] hover:bg-black hover:text-white"
+                className="rounded-lg border-2 border-black bg-white px-3 py-2.5 text-xs font-bold uppercase active:scale-[0.97] hover:bg-black hover:text-white"
               >
                 Cerrar
               </button>
@@ -494,20 +650,31 @@ export function VentaClient({
                       {fmt(l.precioUnitario * l.cantidad)}
                       {l.esServicio ? " · monto cargado a mano" : ""}
                     </span>
+                    {infoVehiculo(l) && (
+                      <span className="text-xs font-semibold text-black/60">{infoVehiculo(l)}</span>
+                    )}
                   </div>
-                  <button
-                    onClick={() => quitarLinea(l.key)}
-                    className="shrink-0 rounded-lg border-2 border-black bg-white px-3 py-1.5 text-xs font-bold tracking-wide uppercase active:scale-[0.97] hover:bg-black hover:text-white"
-                  >
-                    Quitar
-                  </button>
+                  <div className="flex shrink-0 gap-1.5">
+                    <button
+                      onClick={() => abrirEditorVehiculo(l)}
+                      className="rounded-lg border-2 border-black bg-white px-3 py-2.5 text-xs font-bold tracking-wide uppercase active:scale-[0.97] hover:bg-black hover:text-white"
+                    >
+                      Vehículo
+                    </button>
+                    <button
+                      onClick={() => quitarLinea(l.key)}
+                      className="rounded-lg border-2 border-black bg-white px-3 py-2.5 text-xs font-bold tracking-wide uppercase active:scale-[0.97] hover:bg-black hover:text-white"
+                    >
+                      Quitar
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
 
             <div className="mt-3 flex flex-col gap-2">
               <p className="text-sm font-bold tracking-wide uppercase">Método de pago</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {metodosPago.map((mp) => (
                   <button
                     key={mp.id}
@@ -534,6 +701,49 @@ export function VentaClient({
             >
               {pending ? "Confirmando..." : "Confirmar venta"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {editandoKey && (
+        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60 md:items-center">
+          <div className="w-full max-w-md rounded-t-2xl border-4 border-black bg-white p-5 md:rounded-2xl">
+            <p className="mb-3 text-lg font-bold uppercase tracking-wide">Vehículo</p>
+
+            <CamposVehiculo
+              idPrefix="edit"
+              patente={editPatente}
+              rueda={editRueda}
+              lado={editLado}
+              onPatenteChange={setEditPatente}
+              onRuedaChange={elegirEditRueda}
+              onLadoChange={elegirEditLado}
+            />
+
+            {cart.length > 1 && (
+              <button
+                type="button"
+                onClick={aplicarATodasLasLineas}
+                className="mt-4 w-full rounded-lg border-2 border-black bg-white py-2.5 text-xs font-bold tracking-wide uppercase active:scale-[0.97] hover:bg-black hover:text-white"
+              >
+                Aplicar patente a todas las líneas
+              </button>
+            )}
+
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => setEditandoKey(null)}
+                className="flex-1 rounded-lg border-2 border-black bg-red-600 py-3 text-sm font-bold tracking-wide uppercase text-white active:scale-[0.97] hover:bg-black hover:text-red-500"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarVehiculo}
+                className="flex-1 rounded-lg border-2 border-black bg-yellow-400 py-3 text-sm font-bold tracking-wide uppercase text-black active:scale-[0.97] hover:bg-black hover:text-yellow-400"
+              >
+                Guardar
+              </button>
+            </div>
           </div>
         </div>
       )}

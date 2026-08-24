@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { ActualizarStockClient } from "./ActualizarStockClient";
+import { verifySession } from "@/lib/dal";
 
 export const dynamic = "force-dynamic";
 
 export default async function ActualizarStockPage() {
+  await verifySession();
+
   const items = await prisma.item.findMany({
     where: { categoria: { nombre: "Producto" }, activo: true },
     orderBy: { nombre: "asc" },

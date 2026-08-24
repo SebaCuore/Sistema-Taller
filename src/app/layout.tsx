@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { DesktopNav, MobileNav } from "./NavLinks";
+import { LogoutButton } from "./LogoutButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,7 +39,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 className="h-6 w-auto md:h-9"
               />
             </div>
-            <DesktopNav />
+            <div className="flex items-center gap-2">
+              <DesktopNav />
+              <LogoutButton />
+            </div>
           </div>
         </header>
 

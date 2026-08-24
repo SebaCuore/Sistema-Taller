@@ -2,17 +2,27 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { verifySession } from "@/lib/dal";
 
 export type LineaVenta = {
   id_item: number;
   cantidad: number;
   /** Solo para servicios: precio unitario cargado a mano al momento de la venta. */
   monto?: number;
+  /** Datos opcionales del vehículo atendido, para productos o servicios. */
+  patente?: string;
+  rueda?: "DELANTERA" | "TRASERA";
+  lado?: "DERECHA" | "IZQUIERDA";
 };
 
 export async function confirmarVenta(lineas: LineaVenta[], id_metodo_pago: number) {
+  await verifySession();
+
   if (lineas.length === 0) {
     throw new Error("El carrito está vacío.");
+  }
+  if (lineas.length > 100) {
+    throw new Error("Demasiadas líneas en la venta.");
   }
   if (!id_metodo_pago) {
     throw new Error("Elegí un método de pago.");
@@ -25,6 +35,9 @@ export async function confirmarVenta(lineas: LineaVenta[], id_metodo_pago: numbe
       cantidad: number;
       precio_unitario: number;
       subtotal: number;
+      patente: string | null;
+      rueda: "DELANTERA" | "TRASERA" | null;
+      lado: "DERECHA" | "IZQUIERDA" | null;
     }[] = [];
 
     for (const linea of lineas) {
@@ -38,9 +51,10 @@ export async function confirmarVenta(lineas: LineaVenta[], id_metodo_pago: numbe
         throw new Error("Uno de los ítems ya no está disponible.");
       }
 
+      const esServicio = item.categoria.nombre === "Servicio";
       let precio_unitario: number;
 
-      if (item.categoria.nombre === "Servicio") {
+      if (esServicio) {
         if (!linea.monto || linea.monto <= 0) {
           throw new Error(`Ingresá un monto válido para ${item.nombre}.`);
         }
@@ -63,6 +77,9 @@ export async function confirmarVenta(lineas: LineaVenta[], id_metodo_pago: numbe
         cantidad: linea.cantidad,
         precio_unitario,
         subtotal,
+        patente: linea.patente?.trim().toUpperCase().slice(0, 12) || null,
+        rueda: linea.rueda ?? null,
+        lado: linea.lado ?? null,
       });
     }
 
@@ -86,6 +103,8 @@ export async function confirmarVenta(lineas: LineaVenta[], id_metodo_pago: numbe
 }
 
 export async function crearServicio(nombre: string) {
+  await verifySession();
+
   const nombreLimpio = nombre.trim();
   if (!nombreLimpio) {
     throw new Error("El nombre del servicio es obligatorio.");
@@ -105,6 +124,8 @@ export async function crearServicio(nombre: string) {
 }
 
 export async function borrarServicio(id_item: number) {
+  await verifySession();
+
   const item = await prisma.item.findUnique({
     where: { id_item },
     include: { categoria: true },

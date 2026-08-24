@@ -21,6 +21,7 @@ export function ActualizarStockClient({ items }: { items: Item[] }) {
       <input
         value={busqueda}
         onChange={(e) => setBusqueda(e.target.value)}
+        aria-label="Buscar producto por nombre"
         placeholder="Buscar producto por nombre"
         className="rounded-lg border-2 border-black px-4 py-3 text-base focus:ring-2 focus:ring-yellow-400 focus:outline-none"
       />

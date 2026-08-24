@@ -62,7 +62,18 @@ model Venta {
   metodo_pago MetodoPago     @relation(fields: [id_metodo_pago], references: [id_metodo_pago])
   detalles    DetalleVenta[]
 
+  @@index([fecha_hora])
   @@map("ventas")
+}
+
+enum Rueda {
+  DELANTERA
+  TRASERA
+}
+
+enum Lado {
+  DERECHA
+  IZQUIERDA
 }
 
 model DetalleVenta {
@@ -72,9 +83,13 @@ model DetalleVenta {
   cantidad        Int
   precio_unitario Decimal @db.Decimal(10, 2)
   subtotal        Decimal @db.Decimal(10, 2)
+  patente         String?
+  rueda           Rueda?
+  lado            Lado?
 
   venta Venta @relation(fields: [id_venta], references: [id_venta])
   item  Item  @relation(fields: [id_item], references: [id_item])
 
+  @@index([patente])
   @@map("detalles_venta")
 }

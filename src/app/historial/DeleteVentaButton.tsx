@@ -14,7 +14,7 @@ export function DeleteVentaButton({ id_venta }: { id_venta: number }) {
         <button
           onClick={() => setConfirmando(false)}
           disabled={pending}
-          className="rounded-lg border-2 border-black bg-white px-3 py-1.5 text-xs font-bold tracking-wide uppercase transition active:scale-[0.97] hover:bg-black hover:text-white"
+          className="rounded-lg border-2 border-black bg-red-600 px-3 py-2.5 text-xs font-bold tracking-wide uppercase text-white transition active:scale-[0.97] hover:bg-black hover:text-red-500"
         >
           No
         </button>
@@ -26,7 +26,7 @@ export function DeleteVentaButton({ id_venta }: { id_venta: number }) {
               setConfirmando(false);
             })
           }
-          className="rounded-lg border-2 border-black bg-black px-3 py-1.5 text-xs font-bold tracking-wide uppercase text-white transition active:scale-[0.97] disabled:opacity-50"
+          className="rounded-lg border-2 border-black bg-yellow-400 px-3 py-2.5 text-xs font-bold tracking-wide uppercase text-black transition active:scale-[0.97] hover:bg-black hover:text-yellow-400 disabled:opacity-50"
         >
           {pending ? "Borrando..." : "Sí, borrar"}
         </button>
@@ -37,7 +37,7 @@ export function DeleteVentaButton({ id_venta }: { id_venta: number }) {
   return (
     <button
       onClick={() => setConfirmando(true)}
-      className="rounded-lg border-2 border-black bg-white px-3 py-1.5 text-xs font-bold tracking-wide uppercase transition active:scale-[0.97] hover:bg-black hover:text-white"
+      className="rounded-lg border-2 border-black bg-white px-3 py-2.5 text-xs font-bold tracking-wide uppercase transition active:scale-[0.97] hover:bg-black hover:text-white"
     >
       Borrar venta
     </button>

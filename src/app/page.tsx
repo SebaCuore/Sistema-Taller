@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { VentaClient } from "./VentaClient";
+import { verifySession } from "@/lib/dal";
 
 export const dynamic = "force-dynamic";
 
 export default async function VentaPage() {
+  await verifySession();
+
   const [categorias, items, metodosPago] = await Promise.all([
     prisma.categoria.findMany({ orderBy: { nombre: "asc" } }),
     prisma.item.findMany({
