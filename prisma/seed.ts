@@ -17,7 +17,7 @@ async function main() {
   );
 
   await Promise.all(
-    ["Efectivo", "Transferencia", "Tarjeta"].map((nombre) =>
+    ["Efectivo", "Transferencia"].map((nombre) =>
       prisma.metodoPago.upsert({
         where: { nombre },
         update: {},
@@ -25,6 +25,13 @@ async function main() {
       })
     )
   );
+  // Tarjeta se deshabilitó como método de pago (queda desactivada, no se borra,
+  // por si hay ventas viejas que la referencian).
+  await prisma.metodoPago.upsert({
+    where: { nombre: "Tarjeta" },
+    update: {},
+    create: { nombre: "Tarjeta", activo: false },
+  });
 
   console.log("Seed completo: categorías y métodos de pago base.");
 }

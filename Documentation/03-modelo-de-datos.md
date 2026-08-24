@@ -15,7 +15,7 @@
 - `stock_actual` — obligatorio si es Producto; `null` si es Servicio.
 - `activo` (baja lógica)
 
-**`metodos_pago`** — Efectivo, Transferencia, Tarjeta.
+**`metodos_pago`** — Efectivo, Transferencia. Tarjeta existe como fila pero está desactivada (`activo = false`) — se sacó de la app sin borrarla, por si en algún momento hay que reactivarla o ya hay ventas viejas que la referencian.
 - `id_metodo_pago` (PK)
 - `nombre`, `activo`
 
@@ -56,6 +56,7 @@ No es un catálogo reutilizable entre visitas: se crea junto con la venta que lo
    - En **Servicios**, no viene de ninguna tabla: lo escribe el operario al momento de la venta. El servidor confía en ese monto porque el precio de la mano de obra no está en ningún catálogo — es la única excepción a "todo precio sale de una tabla".
 2. **Descuento de stock:** al confirmar una venta con un Producto, se descuenta `items.stock_actual` por la cantidad vendida. **No se bloquea la venta si el stock no alcanza** — puede quedar en 0 o negativo, como señal de que el stock cargado en el sistema está desactualizado respecto al físico. Los Servicios no tienen stock.
 3. **Baja lógica:** desactivar un ítem solo cambia `activo = false`. Nunca se borra un registro que ya tenga ventas asociadas, para no romper el historial.
-4. **Vehículos por venta, no por cliente:** un vehículo se agrega desde la pantalla de Venta con el único dato de la patente (opcional) y se persiste recién al confirmar la venta, junto con sus `detalles_venta`. No hay una pantalla de catálogo de vehículos ni búsqueda de vehículos existentes por patente al cargar una venta nueva — cada visita crea su propio registro, aunque la patente se repita entre visitas. Al borrar una venta (`borrarVenta`), los vehículos que queden sin ningún detalle asociado se borran también, para no acumular filas huérfanas. Una `venta` en sí no tiene FK a `vehiculo`: puede mezclar líneas de distintos vehículos y productos sueltos sin vehículo.
+4. **Vehículos por venta, no por cliente:** un vehículo se agrega desde la pantalla de Vehículos con la patente (opcional) y el tipo (obligatorio), y se persiste recién al cobrarlo, junto con sus `detalles_venta`. No hay una pantalla de catálogo de vehículos ni búsqueda de vehículos existentes por patente al agregar uno nuevo — cada visita crea su propio registro, aunque la patente se repita entre visitas. Al borrar una venta (`borrarVenta`), los vehículos que queden sin ningún detalle asociado se borran también, para no acumular filas huérfanas. Una `venta` en sí no tiene FK a `vehiculo`.
+5. **Un ticket no mezcla vehículos con productos:** la pantalla de Ventas solo vende Productos y la de Vehículos solo cobra los servicios de un único vehículo por vez — cada una llama a un Server Action distinto (`confirmarVenta` en `venta/actions.ts` vs. `cobrarVehiculo` en `vehiculos/actions.ts`), así que una `venta` siempre es 100% Productos o 100% servicios de un mismo vehículo, nunca ambos ni varios vehículos juntos.
 
 > Este modelo reemplaza al esquema original, que incluía una tabla `medidas` e `item_medidas` para manejar precios por rodado. Se simplificó porque en la práctica el precio de un servicio se negocia caso a caso (no tiene sentido mantener una tarifa fija por medida) y los productos, para este MVP, alcanzan con un precio y un stock únicos.

@@ -14,8 +14,9 @@ Validar con el taller, lo antes posible, que una app simple de carga de ventas m
 
 ## Qué entra en el MVP
 
-- Stock de Productos (con precio, stock y tipo Moto/Auto fijos, más una pantalla rápida para corregir cantidades). Los Servicios (sin precio fijo) se cargan directamente desde Ventas.
-- Pantalla de venta: elegir ítems, cobrar (monto a mano en servicios, precio de catálogo en productos), descontar stock.
+- Stock de Productos (con precio, stock y tipo Moto/Auto fijos, más una pantalla rápida para corregir cantidades). Los Servicios (sin precio fijo) se cargan desde la pantalla de Vehículos, asociados al vehículo que se está atendiendo.
+- Pantalla de venta: elegir productos, cobrar (precio de catálogo), descontar stock.
+- Pantalla de vehículos: cargar el vehículo atendido (patente opcional) y los servicios que se le hacen (monto a mano), y cobrarlo con su propio ticket.
 - Historial de ventas: lista filtrable por día, con opción de borrar una venta cargada por error (repone el stock si correspondía).
 - Sin login: acceso interno, un único usuario/dispositivo compartido en el mostrador.
 
