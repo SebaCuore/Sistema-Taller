@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// Vehículos es la pantalla principal: va primero y vive en "/".
 const LINKS = [
-  { href: "/", label: "Ventas" },
-  { href: "/vehiculos", label: "Vehículos" },
+  { href: "/", label: "Vehículos" },
+  { href: "/venta", label: "Ventas" },
   { href: "/historial", label: "Historial" },
-  { href: "/stock", label: "Stock" },
+  { href: "/productos", label: "Productos" },
 ];
 
 function isActive(pathname: string, href: string) {

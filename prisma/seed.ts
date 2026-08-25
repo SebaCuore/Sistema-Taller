@@ -5,6 +5,15 @@ import { PrismaPg } from "@prisma/adapter-pg";
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
+// Productos base del taller. Un Producto guarda solo su nombre: el precio se
+// carga a mano en cada venta y por ahora no se controla cantidad.
+const PRODUCTOS_BASE = [
+  "Cámara de Auto",
+  "Cámara de Moto",
+  "Neumático de Auto",
+  "Neumático de Moto",
+];
+
 async function main() {
   await Promise.all(
     ["Servicio", "Producto"].map((nombre) =>
@@ -33,7 +42,23 @@ async function main() {
     create: { nombre: "Tarjeta", activo: false },
   });
 
-  console.log("Seed completo: categorías y métodos de pago base.");
+  // Item.nombre no es único (un Servicio y un Producto podrían llamarse igual),
+  // así que se busca antes de crear en vez de usar upsert.
+  const categoriaProducto = await prisma.categoria.findUniqueOrThrow({
+    where: { nombre: "Producto" },
+  });
+  for (const nombre of PRODUCTOS_BASE) {
+    const existente = await prisma.item.findFirst({
+      where: { nombre, id_categoria: categoriaProducto.id_categoria },
+    });
+    if (!existente) {
+      await prisma.item.create({
+        data: { nombre, id_categoria: categoriaProducto.id_categoria },
+      });
+    }
+  }
+
+  console.log("Seed completo: categorías, métodos de pago y productos base.");
 }
 
 main()

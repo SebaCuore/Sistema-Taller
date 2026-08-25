@@ -1,23 +1,23 @@
 import { prisma } from "@/lib/prisma";
-import { VehiculosClient } from "./VehiculosClient";
+import { VentaClient } from "./VentaClient";
 import { verifySession } from "@/lib/dal";
 
 export const dynamic = "force-dynamic";
 
-export default async function VehiculosPage() {
+export default async function VentaPage() {
   await verifySession();
 
-  const [servicios, metodosPago] = await Promise.all([
+  const [items, metodosPago] = await Promise.all([
     prisma.item.findMany({
-      where: { activo: true, categoria: { nombre: "Servicio" } },
+      where: { activo: true, categoria: { nombre: "Producto" } },
       orderBy: { nombre: "asc" },
     }),
     prisma.metodoPago.findMany({ where: { activo: true }, orderBy: { id_metodo_pago: "asc" } }),
   ]);
 
   return (
-    <VehiculosClient
-      servicios={servicios.map((s) => ({ id_item: s.id_item, nombre: s.nombre }))}
+    <VentaClient
+      items={items.map((item) => ({ id_item: item.id_item, nombre: item.nombre }))}
       metodosPago={metodosPago.map((m) => ({ id: m.id_metodo_pago, nombre: m.nombre }))}
     />
   );

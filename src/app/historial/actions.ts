@@ -10,17 +10,8 @@ export async function borrarVenta(id_venta: number) {
   await prisma.$transaction(async (tx) => {
     const detalles = await tx.detalleVenta.findMany({
       where: { id_venta },
-      include: { item: { include: { categoria: true } } },
+      select: { id_vehiculo: true },
     });
-
-    for (const detalle of detalles) {
-      if (detalle.item.categoria.nombre === "Producto") {
-        await tx.item.update({
-          where: { id_item: detalle.id_item },
-          data: { stock_actual: (detalle.item.stock_actual ?? 0) + detalle.cantidad },
-        });
-      }
-    }
 
     const idsVehiculo = Array.from(
       new Set(detalles.map((d) => d.id_vehiculo).filter((id): id is number => id !== null))
@@ -40,6 +31,5 @@ export async function borrarVenta(id_venta: number) {
   });
 
   revalidatePath("/historial");
-  revalidatePath("/stock");
   revalidatePath("/");
 }

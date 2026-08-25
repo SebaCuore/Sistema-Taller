@@ -7,16 +7,19 @@ import { verifySession } from "@/lib/dal";
 export type LineaProducto = {
   id_item: number;
   cantidad: number;
+  /** Monto unitario cargado a mano al momento de la venta. */
+  monto: number;
   descripcion?: string;
 };
 
 export async function confirmarVenta(productos: LineaProducto[], id_metodo_pago: number) {
   await verifySession();
 
-  if (productos.length === 0) {
-    throw new Error("El carrito está vacío.");
+  const lineasValidas = productos.filter((l) => l.cantidad > 0);
+  if (lineasValidas.length === 0) {
+    throw new Error("Agregá al menos un producto antes de registrar la venta.");
   }
-  if (productos.length > 100) {
+  if (lineasValidas.length > 100) {
     throw new Error("Demasiadas líneas en la venta.");
   }
   if (!id_metodo_pago) {
@@ -33,9 +36,7 @@ export async function confirmarVenta(productos: LineaProducto[], id_metodo_pago:
       descripcion: string | null;
     }[] = [];
 
-    for (const linea of productos) {
-      if (linea.cantidad <= 0) continue;
-
+    for (const linea of lineasValidas) {
       const item = await tx.item.findUnique({
         where: { id_item: linea.id_item },
         include: { categoria: true },
@@ -43,29 +44,19 @@ export async function confirmarVenta(productos: LineaProducto[], id_metodo_pago:
       if (!item || !item.activo || item.categoria.nombre !== "Producto") {
         throw new Error("Uno de los productos ya no está disponible.");
       }
+      if (!linea.monto || linea.monto <= 0) {
+        throw new Error(`Ingresá un precio válido para ${item.nombre}.`);
+      }
 
-      const precio_unitario = item.precio_base?.toNumber() ?? 0;
-      // Los productos se pueden vender aunque el stock cargado en el sistema
-      // sea 0 o insuficiente: puede haber stock físico sin actualizar todavía.
-      // El stock puede quedar en negativo como señal de que hay que corregirlo.
-      await tx.item.update({
-        where: { id_item: linea.id_item },
-        data: { stock_actual: (item.stock_actual ?? 0) - linea.cantidad },
-      });
-
-      const subtotal = precio_unitario * linea.cantidad;
+      const subtotal = linea.monto * linea.cantidad;
       monto_total += subtotal;
       detalles.push({
         id_item: linea.id_item,
         cantidad: linea.cantidad,
-        precio_unitario,
+        precio_unitario: linea.monto,
         subtotal,
         descripcion: linea.descripcion?.trim() || null,
       });
-    }
-
-    if (detalles.length === 0) {
-      throw new Error("El carrito está vacío.");
     }
 
     return tx.venta.create({
@@ -77,8 +68,8 @@ export async function confirmarVenta(productos: LineaProducto[], id_metodo_pago:
     });
   });
 
-  revalidatePath("/");
-  revalidatePath("/stock");
+  revalidatePath("/venta");
+  revalidatePath("/historial");
 
   return { id_venta: venta.id_venta, monto_total: venta.monto_total.toNumber() };
 }

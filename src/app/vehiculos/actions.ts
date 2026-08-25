@@ -92,7 +92,7 @@ export async function cobrarVehiculo(
     });
   });
 
-  revalidatePath("/vehiculos");
+  revalidatePath("/");
   revalidatePath("/historial");
 
   return { id_venta: venta.id_venta, monto_total: venta.monto_total.toNumber() };
@@ -114,7 +114,7 @@ export async function crearServicio(nombre: string) {
     data: { nombre: nombreLimpio, id_categoria: categoria.id_categoria },
   });
 
-  revalidatePath("/vehiculos");
+  revalidatePath("/");
 
   return { id_item: item.id_item, nombre: item.nombre };
 }
@@ -132,5 +132,5 @@ export async function borrarServicio(id_item: number) {
 
   await prisma.item.update({ where: { id_item }, data: { activo: false } });
 
-  revalidatePath("/vehiculos");
+  revalidatePath("/");
 }

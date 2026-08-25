@@ -25,15 +25,7 @@ export default async function EditarItemPage({
       <h1 className="text-xl font-bold tracking-wide uppercase md:text-2xl">
         Editar {item.nombre}
       </h1>
-      <ItemForm
-        action={updateItem.bind(null, item.id_item)}
-        item={{
-          nombre: item.nombre,
-          precio_base: item.precio_base ? item.precio_base.toNumber() : null,
-          stock_actual: item.stock_actual,
-          tipo_vehiculo: item.tipo_vehiculo,
-        }}
-      />
+      <ItemForm action={updateItem.bind(null, item.id_item)} item={{ nombre: item.nombre }} />
     </div>
   );
 }
